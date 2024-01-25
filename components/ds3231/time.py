@@ -1,6 +1,6 @@
 import esphome.config_validation as cv
 import esphome.codegen as cg
-from esphome import automation
+from esphome import automation, pins
 from esphome.components import i2c, time
 from esphome.const import CONF_ID
 
@@ -12,10 +12,12 @@ DS3231Component = ds3231_ns.class_("DS3231Component", time.RealTimeClock, i2c.I2
 WriteAction = ds3231_ns.class_("WriteAction", automation.Action)
 ReadAction = ds3231_ns.class_("ReadAction", automation.Action)
 
+CONF_ALARM_PIN = 'alarm_pin'
 
 CONFIG_SCHEMA = time.TIME_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(DS3231Component),
+        cv.Required(CONF_ALARM_PIN): pins.gpio_input_pin_schema
     }
 ).extend(i2c.i2c_device_schema(0x68))
 
