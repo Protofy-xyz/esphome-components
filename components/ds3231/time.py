@@ -17,10 +17,17 @@ CONF_ALARM_PIN = 'alarm_pin'
 CONFIG_SCHEMA = time.TIME_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(DS3231Component),
-        cv.Required(CONF_ALARM_PIN): pins.gpio_input_pin_schema
+        #cv.Required(CONF_ALARM_PIN): pins.gpio_input_pin_schema
     }
 ).extend(i2c.i2c_device_schema(0x68))
 
+# @automation.register_action(
+#     "ds3231.set_alarm",
+#     setAlarm,
+#     cv.Schema({
+        
+#     }),
+# )
 
 @automation.register_action(
     "ds3231.write_time",
