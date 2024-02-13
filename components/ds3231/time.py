@@ -17,7 +17,7 @@ CONF_ALARM_PIN = 'alarm_pin'
 CONFIG_SCHEMA = time.TIME_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(DS3231Component),
-        #cv.Required(CONF_ALARM_PIN): pins.gpio_input_pin_schema
+        cv.Required(CONF_ALARM_PIN): pins.gpio_input_pin_schema
     }
 ).extend(i2c.i2c_device_schema(0x68))
 
