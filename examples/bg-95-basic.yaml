@@ -1,0 +1,24 @@
+esphome:
+  name: test
+  libraries:
+    - vshymanskyy/TinyGSM
+    - Print
+    - Stream
+  platformio_options:
+    platform: platformio/espressif32@5.4.0
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+logger: {}
+external_components:
+  - source: esphome-components/components
+    components: [ bg95 ]
+    refresh: 0s
+
+bg95:
+  tx_pin: 16
+  rx_pin: 17
+  enable_pin: 18
+  on_pin: 19
