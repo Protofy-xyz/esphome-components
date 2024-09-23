@@ -29,6 +29,8 @@ class SDCardComponent : public Component {
   void set_json_file_name(const std::string &json_file_name) { this->json_file_name_ = json_file_name; }
   void set_interval_seconds(uint32_t interval_seconds) { this->interval_seconds_ = interval_seconds; }
 
+  void process_pending_json_entries();
+
  protected:
   File file_;
   int cs_pin_;  // Use int for cs_pin_
