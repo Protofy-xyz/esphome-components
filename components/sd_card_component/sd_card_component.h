@@ -19,6 +19,7 @@ class SDCardComponent : public Component {
   void write_file(const char *filename, const char *data);
   void append_file(const char *filename, const char *data);
   void add_sensor(sensor::Sensor *sensor);
+  void append_to_json_file(const char *filename, JsonObject& new_object);
 
  protected:
   File file_;

@@ -21,12 +21,6 @@ void SDCardComponent::setup() {
   }
   ESP_LOGI(TAG, "SD card initialized.");
 
-  // Example of logging sensor data
-  for (auto *sensor : this->sensors_) {
-    float sensor_value = sensor->state;
-    ESP_LOGI(TAG, "Sensor value: %f", sensor_value);
-    // You can add the code to log this value to the SD card here
-  }
 
 }
 
@@ -103,6 +97,82 @@ void SDCardComponent::append_file(const char *filename, const char *data) {
     ESP_LOGE(TAG, "Append failed");
   }
   // Close the file
+  file.close();
+}
+
+void SDCardComponent::append_to_json_file(const char *filename, JsonObject& new_object) {
+  // Open the file
+  File file = SD.open(filename, FILE_READ);
+  if (!file) {
+    ESP_LOGE(TAG, "Failed to open file for reading");
+    return;
+  }
+  // If the file doesn't exist, create it
+  if (!file) {
+    file = SD.open(filename, FILE_WRITE);
+    if (!file) {
+      ESP_LOGE(TAG, "Failed to create file");
+      return;
+    }
+    file.close();
+  }
+  //if the file is empty, write an empty array
+  if (file.size() == 0) {
+    file = SD.open(filename, FILE_WRITE);
+    if (!file) {
+      ESP_LOGE(TAG, "Failed to open file for writing");
+      return;
+    }
+    if (file.print("[]")) {
+      ESP_LOGI(TAG, "Empty array written to file");
+    } else {
+      ESP_LOGE(TAG, "Failed to write empty array to file");
+    }
+    file.close();
+  }
+
+  // Read the file content
+  String fileContent = "";
+  while (file.available()) {
+    fileContent += (char)file.read();
+  }
+  file.close();
+
+  // Parse the existing JSON data
+  StaticJsonDocument<1024> doc; // Adjust size as needed
+  DeserializationError error = deserializeJson(doc, fileContent);
+  if (error) {
+    ESP_LOGE(TAG, "Failed to parse JSON file: %s", error.c_str());
+    return;
+  }
+
+  // Check if the root is an array
+  JsonArray jsonArray;
+  if (doc.is<JsonArray>()) {
+    jsonArray = doc.as<JsonArray>();
+  } else {
+    ESP_LOGE(TAG, "JSON root is not an array");
+    return;
+  }
+
+  // Append the new object to the JSON array
+  jsonArray.add(new_object);
+
+  // Serialize the updated JSON back to a string
+  String output;
+  serializeJson(doc, output);
+
+  // Write the updated JSON back to the file
+  file = SD.open(filename, FILE_WRITE);
+  if (!file) {
+    ESP_LOGE(TAG, "Failed to open file for writing");
+    return;
+  }
+  if (file.print(output)) {
+    ESP_LOGI(TAG, "JSON object appended successfully");
+  } else {
+    ESP_LOGE(TAG, "Failed to write JSON to file");
+  }
   file.close();
 }
 
