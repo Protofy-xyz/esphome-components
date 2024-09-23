@@ -1,0 +1,56 @@
+esphome:
+  name: sd-card-test
+  libraries:
+    - spi
+    - FS
+    - SD
+    - ArduinoJson
+
+esp32:
+  board: esp32dev
+  variant: esp32
+  framework:
+    type: arduino
+    version: latest
+    platform_version: 6.8.1
+
+
+external_components:
+  - source: esphome-components/components
+    components: [ sd_card_component ]
+    refresh: 0s
+
+sd_card_component:
+  id: patata
+  cs_pin: 13 
+  sensors:  ["sensor_1", "sensor_2"]
+  time_id: sntp_time
+  json_file_name: "/test.json"
+  interval_seconds: 10s
+
+logger:
+
+wifi:
+  ssid: 
+  password: 
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Madrid
+    servers:
+     - 0.pool.ntp.org
+     - 1.pool.ntp.org
+     - 2.pool.ntp.org
+
+
+# Example configuration entry
+sensor:
+  - platform: adc
+    pin: 33
+    id: sensor_1
+    update_interval: 60s
+  - platform: adc
+    pin: 32
+    id: sensor_2
+    update_interval: 60s
