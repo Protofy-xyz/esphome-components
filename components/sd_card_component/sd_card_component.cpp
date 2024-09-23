@@ -1,5 +1,6 @@
 #include "sd_card_component.h"
 #include "esphome/core/log.h"
+#include "esphome/components/time/real_time_clock.h"
 
 namespace esphome {
 namespace sd_card_component {
@@ -18,7 +19,16 @@ void SDCardComponent::setup() {
   }
   ESP_LOGI(TAG, "SD card initialized.");
 
-  
+}
+
+void SDCardComponent::loop() {
+  // store sensor data every 5s
+  static unsigned long last_run = 0;
+  if (millis() - last_run > 5000) {
+    this->store_sensor_data("/datalog.json");
+    last_run = millis();
+  }
+
 }
 
 void SDCardComponent::add_sensor(sensor::Sensor *sensor) {
@@ -120,12 +130,39 @@ void SDCardComponent::append_to_json_file(const char *filename, JsonObject& new_
   file.print("]");
 
   file.close();
-  ESP_LOGI(TAG, "JSON object appended successfully");
+  ESP_LOGI(TAG, "JSON object appended successfully: %s", output.c_str());
 }
 
 
 
+void SDCardComponent::store_sensor_data(const char *filename) {
+  StaticJsonDocument<1024> doc;
+  JsonObject new_object = doc.to<JsonObject>();
 
+  for (sensor::Sensor *sensor : this->sensors_) {
+    const std::string sensor_id_str = sensor->get_object_id();
+    const char *sensor_id = sensor_id_str.c_str();
+    float value = sensor->get_state();
 
+    // Get timestamp from the time component
+    auto time = this->time_->now();
+    char timestamp[20];
+    snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02d %02d:%02d:%02d", 
+             time.year, time.month, time.day_of_month, 
+             time.hour, time.minute, time.second);
+
+    JsonObject sensor_data = new_object.createNestedObject(sensor_id);
+    sensor_data["value"] = value;
+    sensor_data["timestamp"] = timestamp;
+    sensor_data["sent"] = false;
+    
+    // Append to json file only if time is valid
+    if (time.year != 1970) {
+      this->append_to_json_file(filename, new_object);
+    }else{
+      ESP_LOGE(TAG, "Invalid time, skipping sensor data storage");
+    }
+  }
+}
 }  // namespace sd_card_component
 }  // namespace esphome
