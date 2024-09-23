@@ -21,31 +21,19 @@ void SDCardComponent::setup() {
   }
   ESP_LOGI(TAG, "SD card initialized.");
 
-  // Create the initial file if it doesn't exist
-  // char* fileContent = read_file("/datalog.txt");
-  // if (fileContent == NULL) {
-  //   write_file("/datalog.txt", "[]\n");
-  // } else {
-  //   delete[] fileContent;
-  // }
+  // Example of logging sensor data
+  for (auto *sensor : this->sensors_) {
+    float sensor_value = sensor->state;
+    ESP_LOGI(TAG, "Sensor value: %f", sensor_value);
+    // You can add the code to log this value to the SD card here
+  }
 
-  // // Log sensor values
-  // StaticJsonDocument<1024> jsonBuffer;
-  // JsonArray jsonArray = jsonBuffer.to<JsonArray>();
-
-  // for (auto &sensor_pair : this->sensors_) {
-  //   JsonObject newEntry = jsonArray.createNestedObject();
-  //   newEntry["sensor"] = sensor_pair.second;
-  //   newEntry["value"] = sensor_pair.first->state;
-  //   newEntry["ts"] = id(time_component).now().timestamp;
-  // }
-
-  // char output[1024];
-  // serializeJson(jsonArray, output, sizeof(output));
-  // this->append_json("/datalog.txt", output);
 }
 
 
+void SDCardComponent::add_sensor(sensor::Sensor *sensor) {
+  this->sensors_.push_back(sensor);
+}
 
 void SDCardComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "SDCardComponent:");

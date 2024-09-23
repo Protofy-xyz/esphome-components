@@ -1,6 +1,5 @@
 #pragma once
 
-//  #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
 #include "esphome.h"
 #include <FS.h>
@@ -11,7 +10,7 @@
 namespace esphome {
 namespace sd_card_component {
 
-class SDCardComponent : public Component{
+class SDCardComponent : public Component {
  public:
   void setup() override;
   void dump_config() override;
@@ -19,11 +18,12 @@ class SDCardComponent : public Component{
   char* read_file(const char *filename);
   void write_file(const char *filename, const char *data);
   void append_file(const char *filename, const char *data);
-  void append_json(const char *filename, const char *data);  
+  void add_sensor(sensor::Sensor *sensor);
 
  protected:
   File file_;
   int cs_pin_;
+  std::vector<sensor::Sensor *> sensors_;
 };
 
 }  // namespace sd_card_component
