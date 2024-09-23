@@ -10,25 +10,23 @@ static const char *const TAG = "sd_card";
 void SDCardComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up sd card component");
 
-  this->cs_pin_ = 13;
-  SPI.begin(18, 19, 23, this->cs_pin_); // sck, miso, mosi, ss(cs)
+
+  SPI.begin(18, 19, 23, this->cs_pin_); // Use get_pin() to obtain the pin number
 
   if (!SD.begin(this->cs_pin_)) {
     ESP_LOGE(TAG, "Card failed, or not present");
     return;
   }
   ESP_LOGI(TAG, "SD card initialized.");
-
 }
 
 void SDCardComponent::loop() {
-  // store sensor data every 5s
+  // store sensor data every interval_seconds
   static unsigned long last_run = 0;
-  if (millis() - last_run > 5000) {
-    this->store_sensor_data("/datalog.json");
+  if (millis() - last_run > (this->interval_seconds_ * 1000)) {
+    this->store_sensor_data(this->json_file_name_.c_str());
     last_run = millis();
   }
-
 }
 
 void SDCardComponent::add_sensor(sensor::Sensor *sensor) {
