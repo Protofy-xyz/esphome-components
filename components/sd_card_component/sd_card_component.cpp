@@ -1,4 +1,5 @@
 #include "sd_card_component.h"
+#include "esphome/components/mqtt/mqtt_client.h"
 #include "esphome/core/log.h"
 #include "esphome/components/time/real_time_clock.h"
 
@@ -25,11 +26,14 @@ void SDCardComponent::loop() {
   static unsigned long last_run = 0;
   if (millis() - last_run > (this->interval_seconds_ * 1000)) {
     this->store_sensor_data(this->json_file_name_.c_str());
+    if(mqtt::global_mqtt_client->is_connected()){
+      this->process_pending_json_entries();
+    } else {
+      ESP_LOGE(TAG, "MQTT not connected, skipping processing of pending JSON entries");
+    }
     last_run = millis();
   }
-  if(true){
-    this->process_pending_json_entries();
-  }
+
 }
 
 
@@ -185,83 +189,70 @@ void SDCardComponent::process_pending_json_entries() {
         return;
     }
 
-    String buffer = "";
-    int brace_count = 0;
-    bool in_string = false;
+    tempFile.print("[\n");  // Start the JSON array in the temporary file with a newline
+
+    String line;
     bool first_object = true;
 
-    tempFile.print("[");  // Start the JSON array in the temporary file
-
     while (file.available()) {
-        char c = char(file.read());
-        buffer += c;
+        line = file.readStringUntil('\n');  // Read each line until a newline character is found
 
-        // Handle string literals in JSON to avoid counting braces inside strings
-        if (c == '"' && (buffer.length() == 1 || buffer[buffer.length() - 2] != '\\')) {
-            in_string = !in_string;
+        if (line.length() == 0) {
+            continue;  // Skip empty lines
         }
 
-        if (!in_string) {
-            if (c == '{' || c == '[') {
-                brace_count++;
-            } else if (c == '}' || c == ']') {
-                brace_count--;
-            }
+        line.trim();  // Remove any leading/trailing whitespace
+
+        // Try to deserialize the JSON line
+        DynamicJsonDocument doc(1024*10);  // Adjust the size if needed
+        DeserializationError error = deserializeJson(doc, line);
+
+        if (error) {
+            // ESP_LOGE(TAG, "Failed to parse JSON line: %s", error.c_str());
+            continue;
         }
 
-        // Process the buffer only when we have a complete JSON object/array
-        if (brace_count == 0 && !in_string && buffer.length() > 0) {
-            ESP_LOGI(TAG, "Processing JSON chunk: %s", buffer.c_str());
-            DynamicJsonDocument doc(1024*10);  // Adjust size as needed
-            DeserializationError error = deserializeJson(doc, buffer);
+        JsonObject obj = doc.as<JsonObject>();
+        for (JsonPair kv : obj) {
+            JsonObject sensor_data = kv.value().as<JsonObject>();
+            if (!sensor_data["sent"].as<bool>()) {
+                // Send the data (replace with actual MQTT send logic)
+                ESP_LOGI(TAG, "Sending data for sensor: %s, value: %f", kv.key().c_str(), sensor_data["value"].as<float>());
+                
+                // Serialize the JSON object to a string
+                String payload;
+                serializeJson(sensor_data, payload);
+                // Send the data via MQTT
+                mqtt::global_mqtt_client->publish("offline_data", payload.c_str());
 
-            if (error) {
-                ESP_LOGE(TAG, "Failed to parse JSON chunk: %s", error.c_str());
-                buffer = "";  // Reset buffer
-                continue;
+                // Assume sending is successful and mark as sent
+                sensor_data["sent"] = true;
             }
 
-            // Process the valid JSON object
-            JsonArray arr = doc.as<JsonArray>();
-            for (JsonObject obj : arr) {
-                for (JsonPair kv : obj) {
-                    JsonObject sensor_data = kv.value().as<JsonObject>();
-                    if (!sensor_data["sent"].as<bool>()) {
-                        // Send the data (replace with actual MQTT send logic)
-                        ESP_LOGI(TAG, "Sending data for sensor: %s, value: %f", kv.key().c_str(), sensor_data["value"].as<float>());
-
-                        // Assume sending is successful and mark as sent
-                        sensor_data["sent"] = true;
-                    }
-
-                    // Write back to the temporary file
-                    if (!first_object) {
-                        tempFile.print(",");  // Add comma between JSON objects
-                    } else {
-                        first_object = false;
-                    }
-
-                    serializeJson(doc, tempFile);  // Write the updated object to the temporary file
-                }
+            // Write back to the temporary file
+            if (!first_object) {
+                tempFile.print(",\n");  // Add a comma and newline between JSON objects
+            } else {
+                first_object = false;
             }
 
-            buffer = "";  // Clear buffer for the next chunk
+            serializeJson(doc, tempFile);  // Write the updated object to the temporary file
         }
     }
 
-    tempFile.print("]");  // Close the JSON array in the temporary file
+    tempFile.print("\n]");  // Close the JSON array with a newline and bracket
 
     file.close();
     tempFile.close();
 
     // Remove the original file and rename the temp file to the original file name only if there has been some data processed
     if (!first_object) {
-      SD.remove(this->json_file_name_.c_str());
-      SD.rename(tempFileName.c_str(), this->json_file_name_.c_str());
+        SD.remove(this->json_file_name_.c_str());
+        SD.rename(tempFileName.c_str(), this->json_file_name_.c_str());
+        // ESP_LOGI(TAG, "Updated JSON file with sent data");
     }
-
-    ESP_LOGI(TAG, "JSON file updated successfully.");
 }
+
 
 }  // namespace sd_card_component
 }  // namespace esphome
