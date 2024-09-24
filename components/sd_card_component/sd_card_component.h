@@ -43,6 +43,8 @@ class SDCardComponent : public Component {
   time::RealTimeClock *time_;
   bool publish_data_when_online_;
   std::string publish_data_topic_;
+  bool sd_card_initialized_ = false;
+
 };
 
 }  // namespace sd_card_component
