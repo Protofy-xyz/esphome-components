@@ -25,19 +25,24 @@ class SDCardComponent : public Component {
   void store_sensor_data(const char *filename);
   
   void set_time(time::RealTimeClock *time) { this->time_ = time; }
-  void set_cs_pin(int cs_pin) { this->cs_pin_ = cs_pin; }  // Change back to int
+  void set_cs_pin(int cs_pin) { this->cs_pin_ = cs_pin; }
   void set_json_file_name(const std::string &json_file_name) { this->json_file_name_ = json_file_name; }
   void set_interval_seconds(uint32_t interval_seconds) { this->interval_seconds_ = interval_seconds; }
+
+  void set_publish_data_when_online(bool publish_data_when_online);
+  void set_publish_data_topic(const std::string &publish_data_topic);
 
   void process_pending_json_entries();
 
  protected:
   File file_;
-  int cs_pin_;  // Use int for cs_pin_
+  int cs_pin_;
   std::string json_file_name_;
   uint32_t interval_seconds_;
   std::vector<sensor::Sensor *> sensors_;
   time::RealTimeClock *time_;
+  bool publish_data_when_online_;
+  std::string publish_data_topic_;
 };
 
 }  // namespace sd_card_component

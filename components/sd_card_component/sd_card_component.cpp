@@ -26,10 +26,12 @@ void SDCardComponent::loop() {
   static unsigned long last_run = 0;
   if (millis() - last_run > (this->interval_seconds_ * 1000)) {
     this->store_sensor_data(this->json_file_name_.c_str());
-    if(mqtt::global_mqtt_client->is_connected()){
-      this->process_pending_json_entries();
-    } else {
-      ESP_LOGE(TAG, "MQTT not connected, skipping processing of pending JSON entries");
+    if(this->publish_data_when_online_){
+      if(mqtt::global_mqtt_client->is_connected()){
+        this->process_pending_json_entries();
+      } else {
+        ESP_LOGE(TAG, "MQTT not connected, skipping processing of pending JSON entries");
+      }
     }
     last_run = millis();
   }
@@ -223,7 +225,7 @@ void SDCardComponent::process_pending_json_entries() {
                 String payload;
                 serializeJson(sensor_data, payload);
                 // Send the data via MQTT
-                mqtt::global_mqtt_client->publish("offline_data", payload.c_str());
+                mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str());
 
                 // Assume sending is successful and mark as sent
                 sensor_data["sent"] = true;
@@ -251,6 +253,14 @@ void SDCardComponent::process_pending_json_entries() {
         SD.rename(tempFileName.c_str(), this->json_file_name_.c_str());
         // ESP_LOGI(TAG, "Updated JSON file with sent data");
     }
+}
+
+void SDCardComponent::set_publish_data_when_online(bool publish_data_when_online) {
+  this->publish_data_when_online_ = publish_data_when_online;
+}
+
+void SDCardComponent::set_publish_data_topic(const std::string &publish_data_topic) {
+  this->publish_data_topic_ = publish_data_topic;
 }
 
 
