@@ -163,7 +163,7 @@ void SDCardComponent::store_sensor_data(const char *filename) {
     // Get timestamp from the time component
     auto time = this->time_->now();
     char timestamp[20];
-    snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02d %02d:%02d:%02d", 
+    snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d", 
              time.year, time.month, time.day_of_month, 
              time.hour, time.minute, time.second);
 
@@ -224,7 +224,8 @@ void SDCardComponent::process_pending_json_entries() {
             if (!sensor_data["sent"].as<bool>()) {
                 // Send the data (replace with actual MQTT send logic)
                 ESP_LOGI(TAG, "Sending data for sensor: %s, value: %f", kv.key().c_str(), sensor_data["value"].as<float>());
-                
+                //remove the sent key
+                sensor_data.remove("sent");
                 // Serialize the JSON object to a string
                 String payload;
                 serializeJson(sensor_data, payload);
