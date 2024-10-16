@@ -6,8 +6,6 @@ from esphome.const import (
     CONF_ADDRESS,
     CONF_CALIBRATION,
     CONF_ID,
-    CONF_MIRROR_X,
-    CONF_MIRROR_Y,
     CONF_MODEL,
     CONF_RANGE,
     CONF_RESOLUTION,
@@ -21,6 +19,8 @@ DEPENDENCIES = ["i2c"]
 
 CONF_MSA3XX_ID = "msa3xx_id"
 
+CONF_MIRROR_X = "mirror_x"
+CONF_MIRROR_Y = "mirror_y"
 CONF_MIRROR_Z = "mirror_z"
 CONF_OFFSET_X = "offset_x"
 CONF_OFFSET_Y = "offset_y"
