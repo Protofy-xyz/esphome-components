@@ -63,39 +63,20 @@ void SDCardComponent::dump_config() {
 
 
 
-void SDCardComponent::append_to_json_file(const char *filename, JsonObject& data_entry) {
-  File file = SD.open(filename, FILE_READ);
-  bool is_new_file = !file || file.size() == 0;
-  String fileContent = "";
-
-  // Check if file is new or empty
-  if (is_new_file) {
-    ESP_LOGI(TAG, "File is new");
+void SDCardComponent::append_to_json_file(const char *filename, JsonObject &data_entry) {
+  // Open the file in write mode, preserving its content but allowing us to modify the last line
+  File file = SD.open(filename, FILE_WRITE);
+  if (!file) {
+    ESP_LOGE(TAG, "Failed to open file for appending data");
+    return;
   }
-  if (!is_new_file) {
-    // Read the current content
-    while (file.available()) {
-      fileContent += (char)file.read();
-    }
-  }
-  file.close();
 
-  if (is_new_file || fileContent.length() <= 3) { 
-    // Initialize with an array if new or empty
-    file = SD.open(filename, FILE_WRITE);
-    if (!file) {
-      ESP_LOGE(TAG, "Failed to create file");
-      return;
-    }
+  // If the file is empty, initialize the JSON array structure
+  if (file.size() == 0) {
     file.print("[\n");
   } else {
-    // Remove last `\n]` to append the new object
-    int last_bracket = fileContent.lastIndexOf(']');
-    if (last_bracket != -1) {
-      fileContent.remove(last_bracket - 1, 2);
-    }
-    file = SD.open(filename, FILE_WRITE);
-    file.print(fileContent);
+    // Seek to the second-to-last character to replace the last `\n]`
+    file.seek(file.size() - 2);
     file.print(",\n");
   }
 
@@ -106,7 +87,7 @@ void SDCardComponent::append_to_json_file(const char *filename, JsonObject& data
   file.print("\n]");  // Close the JSON array
 
   file.close();
-  ESP_LOGI(TAG, "JSON data appended successfully: %s", output.c_str());
+  ESP_LOGI(TAG, "JSON data appended successfully");
 }
 
 
@@ -120,10 +101,8 @@ void SDCardComponent::store_sensor_data(const char *filename) {
   // Loop through each sensor and add its data to the sensors array
   for (sensor::Sensor *sensor : this->sensors_) {
     JsonObject sensor_data = sensors_array.createNestedObject();
-    
-    // Explicitly get the sensor name from its ID
-    sensor_data["name"] = sensor->get_name().c_str();  // Ensures that we use the actual sensor name
-    sensor_data["value"] = sensor->get_state();        // Store the sensor value
+    sensor_data["name"] = sensor->get_name().c_str();
+    sensor_data["value"] = sensor->get_state();
   }
 
   // Get the timestamp and add it to the JSON entry
@@ -142,10 +121,6 @@ void SDCardComponent::store_sensor_data(const char *filename) {
     ESP_LOGE(TAG, "Invalid time, skipping sensor data storage");
   }
 }
-
-
-
-
 
 void SDCardComponent::process_pending_json_entries() {
     File file = SD.open(this->json_file_name_.c_str(), FILE_READ);
