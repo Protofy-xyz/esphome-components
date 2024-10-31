@@ -163,7 +163,8 @@ void SDCardComponent::process_pending_json_entries() {
   const int max_publishes_per_run = 50; // Limit entries per loop
   int publish_count = 0;
   static unsigned long last_position = 0;  // Track last file position
-  
+  static unsigned long last_line = 0; // Track the line number
+
   // Open the main file for reading
   File file = SD.open(this->json_file_name_.c_str(), FILE_READ);
   if (!file) {
@@ -208,6 +209,7 @@ void SDCardComponent::process_pending_json_entries() {
       if (mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str())) {
         ESP_LOGI(TAG, "Data sent to MQTT for timestamp: %s", entry["timestamp"].as<const char*>());
         publish_count++;
+        last_line++;  // Increment line number counter
         continue;  // Skip writing this entry to temp file
       } else {
         ESP_LOGW(TAG, "Failed to send data to MQTT for timestamp: %s", entry["timestamp"].as<const char*>());
@@ -217,6 +219,8 @@ void SDCardComponent::process_pending_json_entries() {
     if (!first_entry) tempFile.print(",\n");
     serializeJson(doc, tempFile);
     first_entry = false;
+    
+    last_line++; // Increment line number counter
   }
 
   // Save the current position in the file for the next call
@@ -227,10 +231,11 @@ void SDCardComponent::process_pending_json_entries() {
   tempFile.close();
 
   if (publish_count >= max_publishes_per_run) {
-    ESP_LOGI(TAG, "Processed %d entries this run, will resume next time. Last position is: %d", publish_count, last_position);
+    ESP_LOGI(TAG, "Processed %d entries this run, will resume next time. Last line number is: %lu", publish_count, last_line);
   } else {
-    // Reset position if all entries are processed
+    // Reset position and line number if all entries are processed
     last_position = 0;
+    last_line = 0;
     SD.remove(this->json_file_name_.c_str());
     SD.rename("/temp.json", this->json_file_name_.c_str());
     ESP_LOGI(TAG, "All pending entries processed and file updated");
