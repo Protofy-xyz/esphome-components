@@ -140,6 +140,9 @@ void SDCardComponent::store_sensor_data(const char *filename) {
 }
 
 void SDCardComponent::process_pending_json_entries() {
+  const int max_publishes_per_run = 10;  // Set your desired max publish limit
+  int publish_count = 0;
+
   File file = SD.open(this->json_file_name_.c_str(), FILE_READ);
   if (!file) {
     ESP_LOGE(TAG, "Failed to open JSON file for reading");
@@ -176,18 +179,25 @@ void SDCardComponent::process_pending_json_entries() {
   for (JsonObject entry : array) {
     bool entry_modified = false;
 
-    // Check each sensor's "sent" field and publish unsent entries
-    if (!entry["sent"].as<bool>()) {
+    // Process only unsent entries and limit to max_publishes_per_run
+    if (!entry["sent"].as<bool>() && mqtt::global_mqtt_client->is_connected()) {
+      if (publish_count >= max_publishes_per_run) {
+        break;  // Stop processing if the max publish limit is reached
+      }
+
       // Send data (replace with actual MQTT send logic)
       ESP_LOGI(TAG, "Sending data for timestamp: %s", entry["timestamp"].as<const char*>());
       String payload;
       serializeJson(entry, payload);
-      mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str());
+      bool success = mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str());
       delay(10);
 
       // Mark as sent after successful publish
-      entry["sent"] = true;
-      entry_modified = true;
+      if (success) {
+        entry["sent"] = true;
+        entry_modified = true;
+        publish_count++;  // Increment the publish count
+      }
     }
 
     // Write entry to the temporary file
@@ -217,6 +227,9 @@ void SDCardComponent::process_pending_json_entries() {
     // If no data was modified, delete the temporary file
     SD.remove(tempFileName.c_str());
   }
+
+  // Log information about the processing
+  ESP_LOGI(TAG, "Processed %d entries this run", publish_count);
 }
 
 void SDCardComponent::set_publish_data_when_online(bool publish_data_when_online) {
