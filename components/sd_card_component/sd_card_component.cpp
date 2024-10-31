@@ -123,83 +123,83 @@ void SDCardComponent::store_sensor_data(const char *filename) {
 }
 
 void SDCardComponent::process_pending_json_entries() {
-    File file = SD.open(this->json_file_name_.c_str(), FILE_READ);
-    if (!file) {
-        ESP_LOGE(TAG, "Failed to open JSON file for reading");
-        return;
-    }
+  File file = SD.open(this->json_file_name_.c_str(), FILE_READ);
+  if (!file) {
+    ESP_LOGE(TAG, "Failed to open JSON file for reading");
+    return;
+  }
 
-    String tempFileName = "/temp.json";
-    File tempFile = SD.open(tempFileName.c_str(), FILE_WRITE);
-    if (!tempFile) {
-        ESP_LOGE(TAG, "Failed to open temporary file for writing");
-        file.close();
-        return;
-    }
-
-    tempFile.print("[\n");  // Start the JSON array in the temporary file with a newline
-
-    String line;
-    bool first_object = true;
-
-    while (file.available()) {
-        line = file.readStringUntil('\n');  // Read each line until a newline character is found
-
-        if (line.length() == 0) {
-            continue;  // Skip empty lines
-        }
-
-        line.trim();  // Remove any leading/trailing whitespace
-
-        // Try to deserialize the JSON line
-        DynamicJsonDocument doc(1024*10);  // Adjust the size if needed
-        DeserializationError error = deserializeJson(doc, line);
-
-        if (error) {
-            // ESP_LOGE(TAG, "Failed to parse JSON line: %s", error.c_str());
-            continue;
-        }
-
-        JsonObject obj = doc.as<JsonObject>();
-        for (JsonPair kv : obj) {
-            JsonObject sensor_data = kv.value().as<JsonObject>();
-            if (!sensor_data["sent"].as<bool>()) {
-                // Send the data (replace with actual MQTT send logic)
-                ESP_LOGI(TAG, "Sending data for sensor: %s, value: %f", kv.key().c_str(), sensor_data["value"].as<float>());
-                //remove the sent key
-                sensor_data.remove("sent");
-                // Serialize the JSON object to a string
-                String payload;
-                serializeJson(sensor_data, payload);
-                // Send the data via MQTT
-                mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str());
-
-                // Assume sending is successful and mark as sent
-                sensor_data["sent"] = true;
-            }
-
-            // Write back to the temporary file
-            if (!first_object) {
-                tempFile.print(",\n");  // Add a comma and newline between JSON objects
-            } else {
-                first_object = false;
-            }
-
-            serializeJson(doc, tempFile);  // Write the updated object to the temporary file
-        }
-    }
-
-    tempFile.print("\n]");  // Close the JSON array with a newline and bracket
-
+  String tempFileName = "/temp.json";
+  File tempFile = SD.open(tempFileName.c_str(), FILE_WRITE);
+  if (!tempFile) {
+    ESP_LOGE(TAG, "Failed to open temporary file for writing");
     file.close();
-    tempFile.close();
+    return;
+  }
 
-    // Remove the original file and rename the temp file to the original file name only if there has been some data processed
-    if (!first_object) {
-        SD.remove(this->json_file_name_.c_str());
-        SD.rename(tempFileName.c_str(), this->json_file_name_.c_str());
-        // ESP_LOGI(TAG, "Updated JSON file with sent data");
+  DynamicJsonDocument doc(1024 * 50); // Adjust size based on the expected file size
+  DeserializationError error = deserializeJson(doc, file);
+  file.close(); // Close the file after reading
+
+  if (error) {
+    ESP_LOGE(TAG, "Failed to parse JSON array from file");
+    tempFile.close();
+    SD.remove(tempFileName.c_str());
+    return;
+  }
+
+  JsonArray array = doc.as<JsonArray>();
+  bool data_modified = false;
+
+  // Start the array in the temporary file
+  tempFile.print("[\n");
+  bool first_entry = true;
+
+  // Iterate over each object in the array
+  for (JsonObject entry : array) {
+    bool entry_modified = false;
+
+    // Check each sensor's "sent" field and publish unsent entries
+    if (!entry["sent"].as<bool>()) {
+      // Send data (replace with actual MQTT send logic)
+      ESP_LOGI(TAG, "Sending data for timestamp: %s", entry["timestamp"].as<const char*>());
+      String payload;
+      serializeJson(entry, payload);
+      mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str());
+      delay(10);
+
+      // Mark as sent after successful publish
+      entry["sent"] = true;
+      entry_modified = true;
     }
+
+    // Write entry to the temporary file
+    if (!first_entry) {
+      tempFile.print(",\n"); // Add a comma between objects
+    } else {
+      first_entry = false;
+    }
+
+    // Serialize each entry (modified or not) to the temporary file
+    serializeJson(entry, tempFile);
+
+    if (entry_modified) {
+      data_modified = true;
+    }
+  }
+
+  tempFile.print("\n]"); // Close the JSON array
+  tempFile.close();
+
+  // Replace original file only if we modified any entries
+  if (data_modified) {
+    SD.remove(this->json_file_name_.c_str());
+    SD.rename(tempFileName.c_str(), this->json_file_name_.c_str());
+    ESP_LOGI(TAG, "Updated JSON file with sent data");
+  } else {
+    // If no data was modified, delete the temporary file
+    SD.remove(tempFileName.c_str());
+  }
 }
 
 void SDCardComponent::set_publish_data_when_online(bool publish_data_when_online) {
