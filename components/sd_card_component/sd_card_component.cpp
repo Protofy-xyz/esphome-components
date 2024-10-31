@@ -227,7 +227,7 @@ void SDCardComponent::process_pending_json_entries() {
   tempFile.close();
 
   if (publish_count >= max_publishes_per_run) {
-    ESP_LOGI(TAG, "Processed %d entries this run, will resume next time", publish_count);
+    ESP_LOGI(TAG, "Processed %d entries this run, will resume next time. Last position is: %d", publish_count, last_position);
   } else {
     // Reset position if all entries are processed
     last_position = 0;
