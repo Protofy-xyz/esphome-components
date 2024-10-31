@@ -160,15 +160,19 @@ void SDCardComponent::store_sensor_data(const char *filename) {
 }
 
 void SDCardComponent::process_pending_json_entries() {
-  const int max_publishes_per_run = 10; // Process in batches of 10 per run
+  const int max_publishes_per_run = 50; // Limit entries per loop
   int publish_count = 0;
-
+  static unsigned long last_position = 0;  // Track last file position
+  
   // Open the main file for reading
   File file = SD.open(this->json_file_name_.c_str(), FILE_READ);
   if (!file) {
     ESP_LOGE(TAG, "Failed to open JSON file for reading");
     return;
   }
+
+  // Move to the last known position in the file
+  file.seek(last_position);
 
   // Open a temporary file for writing retained entries
   File tempFile = SD.open("/temp.json", FILE_WRITE);
@@ -182,55 +186,55 @@ void SDCardComponent::process_pending_json_entries() {
   tempFile.print("[\n");
 
   // Process each line in the original file
-  bool first_entry = true; // Flag to handle commas between entries
-  while (file.available()) {
+  bool first_entry = true;
+  while (file.available() && publish_count < max_publishes_per_run) {
     String line = file.readStringUntil('\n');
     line.trim();
-    if (line.isEmpty()) continue; // Skip empty lines
+    if (line.isEmpty()) continue;
 
-    // Parse each line as a JSON document
     DynamicJsonDocument doc(1024);
     DeserializationError error = deserializeJson(doc, line);
 
     if (error) {
       ESP_LOGE(TAG, "Failed to parse JSON entry, error: %s", error.c_str());
-      continue; // Skip writing unprocessed or problematic entries
+      continue;
     }
 
     JsonObject entry = doc.as<JsonObject>();
 
-    // Check if the entry has been sent
-    if (!entry["sent"].as<bool>() && mqtt::global_mqtt_client->is_connected() && publish_count < max_publishes_per_run) {
-      // Attempt to send the entry via MQTT
+    if (!entry["sent"].as<bool>() && mqtt::global_mqtt_client->is_connected()) {
       String payload;
       serializeJson(entry, payload);
       if (mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str())) {
         ESP_LOGI(TAG, "Data sent to MQTT for timestamp: %s", entry["timestamp"].as<const char*>());
         publish_count++;
-        continue; // Skip writing this entry to temp file as it was sent successfully
+        continue;  // Skip writing this entry to temp file
       } else {
         ESP_LOGW(TAG, "Failed to send data to MQTT for timestamp: %s", entry["timestamp"].as<const char*>());
       }
     }
 
-    // Write a comma before entries (except the first one) to maintain JSON format
-    if (!first_entry) {
-      tempFile.print(",\n");
-    }
+    if (!first_entry) tempFile.print(",\n");
     serializeJson(doc, tempFile);
-    first_entry = false; // Subsequent entries should have a comma
+    first_entry = false;
   }
 
-  // Close the JSON array in the temp file
+  // Save the current position in the file for the next call
+  last_position = file.position();
+
   tempFile.print("\n]");
   file.close();
   tempFile.close();
 
-  // Replace the original file with the updated temp file
-  SD.remove(this->json_file_name_.c_str());
-  SD.rename("/temp.json", this->json_file_name_.c_str());
-
-  ESP_LOGI(TAG, "Processed %d entries this run", publish_count);
+  if (publish_count >= max_publishes_per_run) {
+    ESP_LOGI(TAG, "Processed %d entries this run, will resume next time", publish_count);
+  } else {
+    // Reset position if all entries are processed
+    last_position = 0;
+    SD.remove(this->json_file_name_.c_str());
+    SD.rename("/temp.json", this->json_file_name_.c_str());
+    ESP_LOGI(TAG, "All pending entries processed and file updated");
+  }
 }
 
 void SDCardComponent::set_publish_data_when_online(bool publish_data_when_online) {
