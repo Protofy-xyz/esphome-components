@@ -68,6 +68,10 @@ void SDCardComponent::append_to_json_file(const char *filename, JsonObject& data
   bool is_new_file = !file || file.size() == 0;
   String fileContent = "";
 
+  // Check if file is new or empty
+  if (is_new_file) {
+    ESP_LOGI(TAG, "File is new");
+  }
   if (!is_new_file) {
     // Read the current content
     while (file.available()) {
@@ -77,7 +81,7 @@ void SDCardComponent::append_to_json_file(const char *filename, JsonObject& data
   file.close();
 
   if (is_new_file || fileContent.length() <= 3) { 
-    // If the file is new or effectively empty, initialize with an array and newline
+    // Initialize with an array if new or empty
     file = SD.open(filename, FILE_WRITE);
     if (!file) {
       ESP_LOGE(TAG, "Failed to create file");
@@ -85,59 +89,63 @@ void SDCardComponent::append_to_json_file(const char *filename, JsonObject& data
     }
     file.print("[\n");
   } else {
-    // Otherwise, remove the last `\n]` to append the new object
-    int last_comma = fileContent.lastIndexOf(',');
+    // Remove last `\n]` to append the new object
     int last_bracket = fileContent.lastIndexOf(']');
-    if (last_bracket != -1 && last_bracket > last_comma) {
-      fileContent.remove(last_bracket - 1, 2);  // Remove the newline and closing bracket
-    } else {
-      fileContent.remove(last_comma);  // Remove the last comma if it exists
+    if (last_bracket != -1) {
+      fileContent.remove(last_bracket - 1, 2);
     }
-
     file = SD.open(filename, FILE_WRITE);
     file.print(fileContent);
-    file.print(",\n");  // Add a comma and a newline to separate the new object
+    file.print(",\n");
   }
 
-  // Write the new JSON object with a newline
+  // Write the new JSON object as a single entry in the array
   String output;
-  serializeJson(new_object, output);
+  serializeJson(data_entry, output);
   file.print(output);
-  file.print("\n]");  // Close the JSON array with a newline and bracket
+  file.print("\n]");  // Close the JSON array
 
   file.close();
-  ESP_LOGI(TAG, "JSON object appended successfully: %s", output.c_str());
+  ESP_LOGI(TAG, "JSON data appended successfully: %s", output.c_str());
 }
 
 
 void SDCardComponent::store_sensor_data(const char *filename) {
+  StaticJsonDocument<4096> doc;  // Adjust size if needed
+  JsonObject data_entry = doc.to<JsonObject>();
+
+  // Create the sensors array to hold each sensor's data
+  JsonArray sensors_array = data_entry.createNestedArray("sensors");
+
+  // Loop through each sensor and add its data to the sensors array
   for (sensor::Sensor *sensor : this->sensors_) {
-    StaticJsonDocument<1024> doc;
-    JsonObject new_object = doc.to<JsonObject>();
+    JsonObject sensor_data = sensors_array.createNestedObject();
+    
+    // Explicitly get the sensor name from its ID
+    sensor_data["name"] = sensor->get_name().c_str();  // Ensures that we use the actual sensor name
+    sensor_data["value"] = sensor->get_state();        // Store the sensor value
+  }
 
-    const std::string sensor_id_str = sensor->get_object_id();
-    const char *sensor_id = sensor_id_str.c_str();
-    float value = sensor->get_state();
+  // Get the timestamp and add it to the JSON entry
+  auto time = this->time_->now();
+  char timestamp[20];
+  snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d", 
+           time.year, time.month, time.day_of_month, 
+           time.hour, time.minute, time.second);
+  data_entry["timestamp"] = timestamp;
+  data_entry["sent"] = false;
 
-    // Get timestamp from the time component
-    auto time = this->time_->now();
-    char timestamp[20];
-    snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d", 
-             time.year, time.month, time.day_of_month, 
-             time.hour, time.minute, time.second);
-
-    new_object[sensor_id]["value"] = value;
-    new_object[sensor_id]["timestamp"] = timestamp;
-    new_object[sensor_id]["sent"] = false;
-
-    // Append to json file only if time is valid
-    if (time.year != 1970) {
-      this->append_to_json_file(filename, new_object);
-    } else {
-      ESP_LOGE(TAG, "Invalid time, skipping sensor data storage");
-    }
+  // Append the entire data entry to the JSON file if time is valid
+  if (time.year != 1970) {
+    this->append_to_json_file(filename, data_entry);
+  } else {
+    ESP_LOGE(TAG, "Invalid time, skipping sensor data storage");
   }
 }
+
+
+
+
 
 void SDCardComponent::process_pending_json_entries() {
     File file = SD.open(this->json_file_name_.c_str(), FILE_READ);
