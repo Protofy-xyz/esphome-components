@@ -4,7 +4,8 @@ esphome:
     - spi
     - FS
     - SD
-    - ArduinoJson
+  
+
 
 esp32:
   board: esp32dev
@@ -19,14 +20,21 @@ external_components:
   - source: esphome-components/components
     components: [ sd_card_component ]
     refresh: 0s
+mqtt:
+  broker: 192.168.0.225
+  port: 1883
+  reboot_timeout: 0s
 
 sd_card_component:
   id: patata
-  cs_pin: 13 
-  sensors:  ["sensor_1", "sensor_2"]
+  cs_pin: 13
+  sensors:  ["sensor_1", "sensor_2", "sensor_3", "sensor_4", "sensor_5", "sensor_6", "sensor_7", "sensor_8", "sensor_9", "sensor_10", "sensor_11", "sensor_12", "sensor_13", "sensor_14", "sensor_15", "sensor_16"]
   time_id: sntp_time
   json_file_name: "/test.json"
   interval_seconds: 10s
+  publish_data_when_online: true
+  publish_data_topic: "sdcard/offline_data"
+
 
 logger:
 
@@ -43,14 +51,73 @@ time:
      - 1.pool.ntp.org
      - 2.pool.ntp.org
 
+            
+
 
 # Example configuration entry
 sensor:
-  - platform: adc
-    pin: 33
+  - platform: template
     id: sensor_1
-    update_interval: 60s
-  - platform: adc
-    pin: 32
+    lambda: "return 0.1;"
+
+  - platform: template
     id: sensor_2
-    update_interval: 60s
+    lambda: "return 0.2;"
+
+  - platform: template
+    id: sensor_3
+    lambda: "return 0.3;"
+
+  - platform: template
+    id: sensor_4
+    lambda: "return 0.4;"
+
+  - platform: template
+    id: sensor_5
+    lambda: "return 0.5;"
+
+  - platform: template
+    id: sensor_6
+    lambda: "return 0.6;"
+
+  - platform: template
+    id: sensor_7
+    lambda: "return 0.7;"
+
+  - platform: template
+    id: sensor_8
+    lambda: "return 0.8;"
+
+  - platform: template
+    id: sensor_9
+    lambda: "return 0.9;"
+
+  - platform: template
+    id: sensor_10
+    lambda: "return 0.10;"
+
+  - platform: template
+    id: sensor_11
+    lambda: "return 0.11;"
+
+  - platform: template
+    id: sensor_12
+    lambda: "return 0.12;"
+
+  - platform: template
+    id: sensor_13
+    lambda: "return 0.13;"
+
+  - platform: template
+    id: sensor_14
+    lambda: "return 0.14;"
+
+  - platform: template
+    id: sensor_15
+    lambda: "return 0.15;"
+
+  - platform: template
+    id: sensor_16
+    lambda: "return 0.16;"
+  
+  
