@@ -17,7 +17,7 @@ esp32:
 
 
 external_components:
-  - source: esphome-components/components
+  - source: github://Protofy-xyz/esphome-components
     components: [ sd_card_component ]
     refresh: 0s
 mqtt:
