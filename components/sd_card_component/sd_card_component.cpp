@@ -112,7 +112,24 @@ void SDCardComponent::store_sensor_data(const char *filename) {
            time.year, time.month, time.day_of_month, 
            time.hour, time.minute, time.second);
   data_entry["timestamp"] = timestamp;
-  data_entry["sent"] = false;
+
+  // Check MQTT connection and send immediately if connected
+  bool mqtt_sent = false;
+  if (mqtt::global_mqtt_client->is_connected()) {
+    String payload;
+    serializeJson(data_entry, payload);
+    mqtt_sent = mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str());
+    if (mqtt_sent) {
+      ESP_LOGI(TAG, "Data sent to MQTT for timestamp: %s", timestamp);
+      data_entry["sent"] = true;  // Mark as sent if MQTT publish was successful
+    } else {
+      ESP_LOGW(TAG, "Failed to send data to MQTT for timestamp: %s", timestamp);
+      data_entry["sent"] = false;
+    }
+  } else {
+    ESP_LOGW(TAG, "MQTT not connected, storing data for later for timestamp: %s", timestamp);
+    data_entry["sent"] = false; // Store as unsent if not connected to MQTT
+  }
 
   // Append the entire data entry to the JSON file if time is valid
   if (time.year != 1970) {
