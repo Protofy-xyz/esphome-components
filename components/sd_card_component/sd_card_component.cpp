@@ -60,55 +60,10 @@ void SDCardComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "\tSD Card Free Size: %lluMB", cardSize - cardUsedSize);
 }
 
-char* SDCardComponent::read_file(const char *filename) {
-  File file = SD.open(filename);
-  if (!file) {
-    ESP_LOGE(TAG, "Failed to open file for reading");
-    return NULL;
-  }
 
-  String fileContent = "";
-  while (file.available()) {
-    fileContent += (char)file.read();
-  }
-  file.close();
-  ESP_LOGI(TAG, "File %s read", filename);
 
-  char* result = new char[fileContent.length() + 1];
-  strcpy(result, fileContent.c_str());
 
-  return result;
-}
-
-void SDCardComponent::write_file(const char *filename, const char *data) {
-  File file = SD.open(filename, FILE_WRITE);
-  if (!file) {
-    ESP_LOGE(TAG, "Failed to open file for writing");
-    return;
-  }
-  if (file.print(data)) {
-    ESP_LOGI(TAG, "File written");
-  } else {
-    ESP_LOGE(TAG, "Write failed");
-  }
-  file.close();
-}
-
-void SDCardComponent::append_file(const char *filename, const char *data) {
-  File file = SD.open(filename, FILE_APPEND);
-  if (!file) {
-    ESP_LOGE(TAG, "Failed to open file for appending");
-    return;
-  }
-  if (file.print(data)) {
-    ESP_LOGI(TAG, "File appended");
-  } else {
-    ESP_LOGE(TAG, "Append failed");
-  }
-  file.close();
-}
-
-void SDCardComponent::append_to_json_file(const char *filename, JsonObject& new_object) {
+void SDCardComponent::append_to_json_file(const char *filename, JsonObject& data_entry) {
   File file = SD.open(filename, FILE_READ);
   bool is_new_file = !file || file.size() == 0;
   String fileContent = "";

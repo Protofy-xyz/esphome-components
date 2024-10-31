@@ -17,9 +17,7 @@ class SDCardComponent : public Component {
   void loop() override;
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::DATA; }
-  char* read_file(const char *filename);
-  void write_file(const char *filename, const char *data);
-  void append_file(const char *filename, const char *data);
+  
   void add_sensor(sensor::Sensor *sensor);
   void append_to_json_file(const char *filename, JsonObject& new_object);
   void store_sensor_data(const char *filename);
