@@ -1,0 +1,50 @@
+esphome:
+  name: uartesp32
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+uart:
+  id: my_uart
+  tx_pin: GPIO17  
+  rx_pin: GPIO16
+  baud_rate: 115200
+  parity: NONE
+  data_bits: 8 
+  stop_bits: 1
+
+  debug:
+    direction: BOTH
+    dummy_receiver: true
+    after:
+      delimiter: "\n"
+    sequence:
+      - lambda: |-
+          UARTDebug::log_string(direction, bytes);
+          
+          
+# std::string json_str(bytes.begin(), bytes.end());
+# StaticJsonDocument<256> doc;  // Adjust size as needed
+# DeserializationError error = deserializeJson(doc, json_str);
+# if (error) {
+#   Serial.print(F("Failed to parse JSON: "));
+#   Serial.println(error.c_str());
+#   return;
+# }
+# if (doc.containsKey("example_key")) {
+#   const char* example_value = doc["example_key"];
+#   Serial.print("Parsed value: ");
+#   Serial.println(example_value);
+# }
+
+# external_components:
+#   source: esphome-components/components
+#   components: [bc127]
+#   refresh: 0s
+
+# bc127:
+#   rx: GPIO22
+#   tx: GPIO21
+#   baudrate: 9600
