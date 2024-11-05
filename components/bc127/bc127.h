@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esphome/core/hal.h"
+#include "esphome/components/uart/uart.h"  
 #include "esphome/core/component.h"
 #include "esphome.h"
 #include <ArduinoJson.h>
@@ -11,7 +12,7 @@ namespace esphome
   namespace bc127
   {
 
-    class BC127Component : public Component  {
+    class BC127Component : public Component, public uart::UARTDevice   {
     public:
       void setup() override;
       void loop() override;
@@ -25,9 +26,9 @@ namespace esphome
       //   void store_sensor_data(const char *filename);
 
       //   void set_time(time::RealTimeClock *time) { this->time_ = time; }
-      void set_rx(int pin) { this->rx_ = pin; }
-      void set_tx(int pin) { this->tx_ = pin; }
-      void set_baudrate(uint32_t bauds) { this->baudrate_ = bauds; }
+      // void set_rx(int pin) { this->rx_ = pin; }
+      // void set_tx(int pin) { this->tx_ = pin; }
+      // void set_baudrate(uint32_t bauds) { this->baudrate_ = bauds; }
       //   void set_json_file_name(const std::string &json_file_name) { this->json_file_name_ = json_file_name; }
       //   void set_interval_seconds(uint32_t interval_seconds) { this->interval_seconds_ = interval_seconds; }
 
@@ -37,9 +38,9 @@ namespace esphome
       //   void process_pending_json_entries();
 
     protected:
-      int rx_;
-      int tx_;
-      uint32_t baudrate_;
+      // int rx_;
+      // int tx_;
+      // uint32_t baudrate_;
       // EspSoftwareSerial::UART myPort_;
 
       //   File file_;
