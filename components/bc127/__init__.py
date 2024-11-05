@@ -18,9 +18,9 @@ BC127Component = bc127_ns.class_('BC127Component', cg.Component)
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(BC127Component),
-        cv.Required(CONF_RX): pins.gpio_input_pin_schema,
-        cv.Required(CONF_TX): pins.gpio_output_pin_schema,
-        cv.Required(CONF_BAUDRATE): cv.int_range(9600, 115200),
+        # cv.Required(CONF_RX): pins.gpio_input_pin_schema,
+        # cv.Required(CONF_TX): pins.gpio_output_pin_schema,
+        # cv.Required(CONF_BAUDRATE): cv.int_range(9600, 115200),
         # cv.Required(CONF_SENSORS): cv.ensure_list(cv.use_id(sensor.Sensor)),
         # cv.Required(CONF_TIME_ID): cv.use_id(time_component.RealTimeClock),
         # cv.Required(CONF_JSON_FILE_NAME): cv.string_strict,
@@ -38,13 +38,13 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
-    rx = await cg.gpio_pin_expression(config[CONF_RX])
-    cg.add(var.set_rx(rx.get_pin()))
+    # rx = await cg.gpio_pin_expression(config[CONF_RX])
+    # cg.add(var.set_rx(rx.get_pin()))
     
-    tx = await cg.gpio_pin_expression(config[CONF_TX])
-    cg.add(var.set_tx(tx.get_pin()))
+    # tx = await cg.gpio_pin_expression(config[CONF_TX])
+    # cg.add(var.set_tx(tx.get_pin()))
     
-    cg.add(var.set_baudrate(config[CONF_BAUDRATE]))
+    # cg.add(var.set_baudrate(config[CONF_BAUDRATE]))
     
     # cs_pin = await cg.gpio_pin_expression(config[CONF_CS_PIN])
     # cg.add(var.set_cs_pin(cs_pin.get_pin()))
