@@ -1,8 +1,9 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome import pins
-from esphome.components import spi, sensor, time as time_component
-from esphome.const import CONF_ID, CONF_SENSORS, CONF_TIME_ID
+from esphome import pins, automation
+from esphome.components import sensor,uart, time as time_component
+from esphome.const import CONF_ID, CONF_SENSORS, CONF_TIME_ID, CONF_TRIGGER_ID
+from esphome.cpp_generator import MockObj
 
 CONF_RX = "rx"
 CONF_TX = "tx"
@@ -11,9 +12,14 @@ CONF_BAUDRATE = "baudrate"
 # CONF_INTERVAL_SECONDS = "interval_seconds"
 # CONF_PUBLISH_DATA_WHEN_ONLINE = "publish_data_when_online"
 # CONF_PUBLISH_DATA_TOPIC = "publish_data_topic"
+DEPENDENCIES = ["uart"]
+CODEOWNERS = ['@lluis-protofy-xyz']
 
 bc127_ns = cg.esphome_ns.namespace('bc127')
-BC127Component = bc127_ns.class_('BC127Component', cg.Component)
+BC127Component = bc127_ns.class_('BC127Component', cg.Component,uart.UARTDevice,cg.Controller)
+
+CONF_ON_BC127_CONNECTED = "on_connected"
+BC127OnConnectedTrigger = bc127_ns.class_('BC127ConnectedTrigger', automation.Trigger.template())
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -27,16 +33,30 @@ CONFIG_SCHEMA = cv.Schema(
         # cv.Optional(CONF_INTERVAL_SECONDS, default=5): cv.positive_time_period_seconds,
         # cv.Optional(CONF_PUBLISH_DATA_WHEN_ONLINE, default=False): cv.boolean,
         # cv.Optional(CONF_PUBLISH_DATA_TOPIC): cv.string_strict,
+        
+        cv.Optional(CONF_ON_BC127_CONNECTED): automation.validate_automation({
+        cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(BC127OnConnectedTrigger),
+    })
     }
-).extend(cv.COMPONENT_SCHEMA)
+).extend(cv.COMPONENT_SCHEMA).extend(uart.UART_DEVICE_SCHEMA)
+FINAL_VALIDATE_SCHEMA = uart.final_validate_device_schema(
+    "bc127", baud_rate=9600, parity="NONE", stop_bits=1, data_bits=8
+)
 
 async def to_code(config):
     
     # cg.add_library("plerup/EspSoftwareSerial","8.2.0")
     cg.add_library("bblanchon/ArduinoJson", "6.18.5")
     
+    
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+    await uart.register_uart_device(var, config)
+    
+    for conf in config.get(CONF_ON_BC127_CONNECTED, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(trigger, [(cg.std_vector.template(cg.uint8), "bytes")], conf)
+    # GLOBAL_BLE_CONTROLLER_VAR = MockObj(bc127_ns.controller, "->")
 
     # rx = await cg.gpio_pin_expression(config[CONF_RX])
     # cg.add(var.set_rx(rx.get_pin()))
