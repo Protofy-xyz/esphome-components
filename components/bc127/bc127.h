@@ -25,6 +25,7 @@ namespace esphome
     {
     public:
       std::vector<uint8_t> bytes = { 'a', 'b','c' };
+      std::string callerId;
       BC127Component();
       virtual ~BC127Component() {}
       void setup() override;
@@ -32,6 +33,7 @@ namespace esphome
       void dump_config() override;
       float get_setup_priority() const override { return setup_priority::DATA; }
       void add_on_connected_callback(std::function<void()> &&trigger_function);
+      void add_on_call_callback(std::function<void()> &&trigger_function);
 
       void call_answer();
       void call_reject();
@@ -69,6 +71,7 @@ namespace esphome
       void send_command(const std::string &command);
       void set_state(int state);
       CallbackManager<void()>       on_connected_callbacks;
+      CallbackManager<void()>       on_call_callbacks;
       PhoneContactManager phoneContactManager;
       // int rx_;
       // int tx_;

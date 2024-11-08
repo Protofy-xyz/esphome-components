@@ -138,7 +138,13 @@ namespace esphome
           if(this->phoneContactManager.find_contact_by_number(phone_number.c_str())==nullptr){
               ESP_LOGI(TAG, "Call rejected because the phone number is not in the contact list");
               this->call_reject();
+              return;
           };
+          this->callerId = this->phoneContactManager.find_contact_by_number(phone_number.c_str())->to_string();
+          this->add_on_call_callback([this]()
+                                        { ESP_LOGD(TAG, "ADD ON CALL CALLBACK"); });
+          auto &callbacks = on_call_callbacks;
+          callbacks.call();
         }
         else
         {
@@ -243,6 +249,11 @@ namespace esphome
     void BC127Component::add_on_connected_callback(std::function<void()> &&trigger_function)
     {
       on_connected_callbacks.add(std::move(trigger_function));
+    }
+
+    void BC127Component::add_on_call_callback(std::function<void()> &&trigger_function)
+    {
+      on_call_callbacks.add(std::move(trigger_function));
     }
 
     void BC127Component::dump_config()

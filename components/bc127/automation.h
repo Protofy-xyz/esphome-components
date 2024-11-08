@@ -15,5 +15,11 @@ namespace esphome
         public:
             explicit BC127ConnectedTrigger(BC127Component *obj);
         };
+
+        class BC127CallTrigger : public Trigger<std::string>
+        {
+        public:
+            explicit BC127CallTrigger(BC127Component *obj);
+        };
     } // namespace bc127
 } // namespace esphome

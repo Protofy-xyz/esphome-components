@@ -21,6 +21,9 @@ BC127Component = bc127_ns.class_('BC127Component', cg.Component,uart.UARTDevice,
 CONF_ON_BC127_CONNECTED = "on_connected"
 BC127OnConnectedTrigger = bc127_ns.class_('BC127ConnectedTrigger', automation.Trigger.template())
 
+CONF_ON_BC127_CALL = "on_call"
+BC127OnCallTrigger = bc127_ns.class_('BC127CallTrigger', automation.Trigger.template())
+
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(BC127Component),
@@ -36,7 +39,11 @@ CONFIG_SCHEMA = cv.Schema(
         
         cv.Optional(CONF_ON_BC127_CONNECTED): automation.validate_automation({
         cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(BC127OnConnectedTrigger),
-    })
+        }),     
+        cv.Optional(CONF_ON_BC127_CALL): automation.validate_automation({
+        cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(BC127OnCallTrigger)
+        })
+   
     }
 ).extend(cv.COMPONENT_SCHEMA).extend(uart.UART_DEVICE_SCHEMA)
 FINAL_VALIDATE_SCHEMA = uart.final_validate_device_schema(
@@ -56,6 +63,9 @@ async def to_code(config):
     for conf in config.get(CONF_ON_BC127_CONNECTED, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(trigger, [(cg.std_vector.template(cg.uint8), "bytes")], conf)
+    for conf in config.get(CONF_ON_BC127_CALL, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(trigger, [(cg.std_string, "bytes")], conf)
     # GLOBAL_BLE_CONTROLLER_VAR = MockObj(bc127_ns.controller, "->")
 
     # rx = await cg.gpio_pin_expression(config[CONF_RX])

@@ -11,6 +11,10 @@ std::string PhoneContact::get_number() const {
   return number_;
 }
 
+std::string PhoneContact::to_string() const {
+  return name_ + ":" + number_;
+}
+
 void PhoneContactManager::add_contact(const PhoneContact &contact) {
   contacts_.push_back(contact);
 }

@@ -10,6 +10,8 @@
 
         std::string get_name() const;
         std::string get_number() const;
+        std::string to_string() const;
+
 
     private:
         std::string name_;
