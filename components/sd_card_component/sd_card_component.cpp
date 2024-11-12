@@ -52,6 +52,10 @@ void SDCardComponent::add_sensor(sensor::Sensor *sensor) {
   this->sensors_.push_back(sensor);
 }
 
+void SDCardComponent::add_number(number::Number *number) {
+  this->numbers_.push_back(number);
+}
+
 void SDCardComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "SDCardComponent:");
   uint64_t cardSize = SD.cardSize() / (1024 * 1024);
@@ -93,6 +97,17 @@ void SDCardComponent::store_sensor_data(const char *filename) {
     JsonObject sensor_data = sensors_array.createNestedObject();
     sensor_data["name"] = sensor->get_name().c_str();
     sensor_data["value"] = sensor->get_state();
+  }
+
+
+  // Create the numbers array to hold each number's data
+  JsonArray numbers_array = data_entry.createNestedArray("numbers");
+
+  // Loop through each number and add its data to the numbers array
+  for (number::Number *number : this->numbers_) {
+    JsonObject number_data = numbers_array.createNestedObject();
+    number_data["name"] = number->get_name().c_str();
+    number_data["value"] = number->state;
   }
 
   // Get the timestamp and add it to the JSON entry

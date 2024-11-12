@@ -24,6 +24,8 @@ class SDCardComponent : public Component,
   
   // Method to add a sensor to the SD card component
   void add_sensor(sensor::Sensor *sensor);
+  //method to add numbers
+  void add_number(number::Number *number);
 
   // Modified methods to append all sensor data in one write
   void append_to_json_file(const char *filename, JsonObject& sensors_data);
@@ -46,6 +48,7 @@ class SDCardComponent : public Component,
   std::string json_file_name_;               // Name of JSON file for storing sensor data
   uint32_t interval_seconds_;                // Interval between data storage
   std::vector<sensor::Sensor *> sensors_;    // List of sensors added to the component
+  std::vector<number::Number *> numbers_;    // List of numbers added to the component
   time::RealTimeClock *time_;                // Real-time clock for timestamping
   bool publish_data_when_online_;            // Flag to publish data when online
   std::string publish_data_topic_;           // MQTT topic for publishing data
