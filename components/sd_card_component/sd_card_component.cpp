@@ -181,7 +181,7 @@ void SDCardComponent::process_pending_json_entries() {
     line.trim();
     if (line.isEmpty()) continue;
 
-    DynamicJsonDocument doc(1024);
+    DynamicJsonDocument doc(4096);
     DeserializationError error = deserializeJson(doc, line);
 
     if (error) {
