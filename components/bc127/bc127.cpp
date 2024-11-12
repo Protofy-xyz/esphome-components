@@ -141,6 +141,7 @@ namespace esphome
               return;
           };
           this->callerId = this->phoneContactManager.find_contact_by_number(phone_number.c_str())->to_string();
+          ESP_LOGI(TAG, "Caller ID: %s", this->callerId.c_str());
           this->add_on_call_callback([this]()
                                         { ESP_LOGD(TAG, "ADD ON CALL CALLBACK"); });
           auto &callbacks = on_call_callbacks;
