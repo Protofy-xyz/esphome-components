@@ -3,6 +3,7 @@ import esphome.config_validation as cv
 from esphome import pins
 from esphome.components import spi, sensor, time as time_component
 from esphome.const import CONF_ID, CONF_SENSORS, CONF_TIME_ID
+from esphome.core import CORE
 
 CONF_CS_PIN = "cs_pin"
 CONF_JSON_FILE_NAME = "json_file_name"
@@ -47,3 +48,8 @@ async def to_code(config):
     for sensor_id in config[CONF_SENSORS]:
         sens = await cg.get_variable(sensor_id)
         cg.add(var.add_sensor(sens))
+
+    if CORE.using_arduino:
+        if CORE.is_esp32:
+            cg.add_library("FS", None)
+            cg.add_library("SD", None)
