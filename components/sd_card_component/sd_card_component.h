@@ -7,16 +7,20 @@
 #include <SPI.h>
 #include <ArduinoJson.h>
 #include "esphome/components/time/real_time_clock.h"
+#include "esphome/components/spi/spi.h"
 
 namespace esphome {
 namespace sd_card_component {
 
-class SDCardComponent : public Component {
- public:
+class SDCardComponent : public Component,
+                        public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW, spi::CLOCK_PHASE_TRAILING,
+                                      spi::DATA_RATE_1MHZ> {
+  public:
+  SDCardComponent() = default;
   void setup() override;
   void loop() override;
   void dump_config() override;
-  float get_setup_priority() const override { return setup_priority::HARDWARE; }
+  float get_setup_priority() const override { return setup_priority::DATA; }
   
   // Method to add a sensor to the SD card component
   void add_sensor(sensor::Sensor *sensor);
@@ -27,7 +31,7 @@ class SDCardComponent : public Component {
 
   // Setters for configuration options
   void set_time(time::RealTimeClock *time) { this->time_ = time; }
-  void set_cs_pin(int cs_pin) { this->cs_pin_ = cs_pin; }
+  void set_cs_pin(InternalGPIOPin *pin) { cs_pin_ = pin; }
   void set_json_file_name(const std::string &json_file_name) { this->json_file_name_ = json_file_name; }
   void set_interval_seconds(uint32_t interval_seconds) { this->interval_seconds_ = interval_seconds; }
   void set_publish_data_when_online(bool publish_data_when_online);
@@ -38,7 +42,7 @@ class SDCardComponent : public Component {
 
  protected:
   File file_;
-  int cs_pin_;                               // Chip select pin for SD card
+  InternalGPIOPin *cs_pin_;                  // Chip select pin for SD card
   std::string json_file_name_;               // Name of JSON file for storing sensor data
   uint32_t interval_seconds_;                // Interval between data storage
   std::vector<sensor::Sensor *> sensors_;    // List of sensors added to the component

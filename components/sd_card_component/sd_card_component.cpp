@@ -11,10 +11,12 @@ static const char *const TAG = "sd_card";
 void SDCardComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up sd card component");
 
-  SPI.begin(18, 19, 23, this->cs_pin_);
+  // Use native SPI bus with this->spi_
+  this->spi_setup();
+
 
   int retries = 2;
-  while (!SD.begin(this->cs_pin_) && retries > 0) {
+  while (!SD.begin(this->cs_pin_->get_pin()) && retries > 0) {
       ESP_LOGE(TAG, "Failed to initialize SD card, retrying... (%d)", retries);
       retries--;
   }

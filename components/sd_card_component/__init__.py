@@ -2,22 +2,20 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import pins
 from esphome.components import spi, sensor, time as time_component
-from esphome.const import CONF_ID, CONF_SENSORS, CONF_TIME_ID
+from esphome.const import CONF_ID, CONF_SENSORS, CONF_TIME_ID, CONF_CS_PIN
 from esphome.core import CORE
 
-CONF_CS_PIN = "cs_pin"
 CONF_JSON_FILE_NAME = "json_file_name"
 CONF_INTERVAL_SECONDS = "interval_seconds"
 CONF_PUBLISH_DATA_WHEN_ONLINE = "publish_data_when_online"
 CONF_PUBLISH_DATA_TOPIC = "publish_data_topic"
 
 sd_card_ns = cg.esphome_ns.namespace('sd_card_component')
-SDCardComponent = sd_card_ns.class_('SDCardComponent', cg.Component)
+SDCardComponent = sd_card_ns.class_('SDCardComponent', cg.Component, spi.SPIDevice)
 
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(SDCardComponent),
-        cv.Required(CONF_CS_PIN): pins.gpio_output_pin_schema,
         cv.Required(CONF_SENSORS): cv.ensure_list(cv.use_id(sensor.Sensor)),
         cv.Required(CONF_TIME_ID): cv.use_id(time_component.RealTimeClock),
         cv.Required(CONF_JSON_FILE_NAME): cv.string_strict,
@@ -25,14 +23,18 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_PUBLISH_DATA_WHEN_ONLINE, default=False): cv.boolean,
         cv.Optional(CONF_PUBLISH_DATA_TOPIC): cv.string_strict,
     }
-).extend(cv.COMPONENT_SCHEMA)
+).extend(cv.COMPONENT_SCHEMA).extend(spi.spi_device_schema(cs_pin_required=True))
+
+FINAL_VALIDATE_SCHEMA = spi.final_validate_device_schema(
+    "sd_card_ns", require_miso=True, require_mosi=True,
+)
+
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+    await spi.register_spi_device(var, config)
 
-    cs_pin = await cg.gpio_pin_expression(config[CONF_CS_PIN])
-    cg.add(var.set_cs_pin(cs_pin.get_pin()))
 
     time = await cg.get_variable(config[CONF_TIME_ID])
     cg.add(var.set_time(time))
@@ -51,5 +53,7 @@ async def to_code(config):
 
     if CORE.using_arduino:
         if CORE.is_esp32:
+            cg.add_library("spi", None)
             cg.add_library("FS", None)
             cg.add_library("SD", None)
+
