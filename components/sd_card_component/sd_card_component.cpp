@@ -107,15 +107,18 @@ void SDCardComponent::store_sensor_data(const char *filename) {
   bool mqtt_sent = false;
   if (mqtt::global_mqtt_client->is_connected()) {
     String payload;
+    data_entry["sent_immediately"] = true;
     serializeJson(data_entry, payload);
     mqtt_sent = mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str());
     if (mqtt_sent) {
       ESP_LOGI(TAG, "Data sent to MQTT for timestamp: %s", timestamp);
     } else {
       ESP_LOGW(TAG, "Failed to send data to MQTT for timestamp: %s", timestamp);
+      data_entry["sent_immediately"] = false;
     }
   } else {
     ESP_LOGW(TAG, "MQTT not connected, storing data for later for timestamp: %s", timestamp);
+    data_entry["sent_immediately"] = false;
   }
 
   // Append the entire data entry to the JSON file if time is valid and data was not sent
@@ -173,7 +176,7 @@ void SDCardComponent::process_pending_json_entries() {
 
     JsonObject entry = doc.as<JsonObject>();
 
-    if (!entry["sent"].as<bool>() && mqtt::global_mqtt_client->is_connected()) {
+    if (!entry["sent_immediately"].as<bool>() && mqtt::global_mqtt_client->is_connected()) {
       String payload;
       serializeJson(entry, payload);
       if (mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str())) {
