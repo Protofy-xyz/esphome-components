@@ -13,7 +13,7 @@ void SDCardComponent::setup() {
 
   SPI.begin(18, 19, 23, this->cs_pin_);
 
-  int retries = 5;
+  int retries = 2;
   while (!SD.begin(this->cs_pin_) && retries > 0) {
       ESP_LOGE(TAG, "Failed to initialize SD card, retrying... (%d)", retries);
       retries--;
