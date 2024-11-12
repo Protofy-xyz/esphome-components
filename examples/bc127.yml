@@ -1,9 +1,5 @@
 esphome:
   name: uartesp32
-  # on_boot:
-  #   priority: 200
-  #   then:
-  #     - switch.turn_off: switch_1
 
 logger:
   level: DEBUG
@@ -90,6 +86,10 @@ external_components:
 bc127:
   id: my_bc127
   uart_id: my_uart
+  on_call:
+    - lambda: |- 
+        ESP_LOGD("call", "incoming call");
+        ESP_LOGD("incoming call Id: ",  id(my_bc127).callerId.c_str());
   on_connected: 
     - lambda: |-
     
@@ -104,9 +104,9 @@ bc127:
         itoa(id(my_bc127).get_onetime(), char_ptr2, 10);
         ESP_LOGD("onetimeis", char_ptr2 );
         // Cuando termines, libera la memoria para evitar fugas de memoria
-        ESP_LOGD("potatoe",  char_ptr);
+        ESP_LOGD("test",  char_ptr);
         delete[] char_ptr;
-
+  
     # - logger.log: "papiro to BC127"
 # std::string json_str(bytes.begin(), bytes.end());
 # StaticJsonDocument<256> doc;  // Adjust size as needed
