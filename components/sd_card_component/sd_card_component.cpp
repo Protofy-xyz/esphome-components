@@ -65,47 +65,20 @@ void SDCardComponent::dump_config() {
 
 
 void SDCardComponent::append_to_json_file(const char *filename, JsonObject &data_entry) {
-  // Open the file for reading and writing
-  File file = SD.open(filename, FILE_READ);
-  String file_content;
-
-  if (file) {
-    file_content = file.readString();
-    file.close();
-  }
-
-  // Remove any trailing characters to ensure the file is in the correct format
-  if (file_content.endsWith("]\n")) {
-    file_content.remove(file_content.length() - 2);
-  } else if (file_content.endsWith("]")) {
-    file_content.remove(file_content.length() - 1);
-  }
-
-  // Add a comma to separate entries if the file isn't empty
-  if (!file_content.isEmpty() && file_content != "[\n") {
-    file_content += ",\n";
-  } else {
-    // If the file is empty or just starting, initialize the JSON array
-    file_content = "[\n";
-  }
-
-  // Serialize the new JSON entry and add it to the file content
-  String output;
-  serializeJson(data_entry, output);
-  file_content += output;
-  file_content += "\n]";  // Properly close the JSON array
-
-  // Write the updated content back to the file
-  file = SD.open(filename, FILE_WRITE);
+  // Open the file in append mode
+  File file = SD.open(filename, FILE_APPEND);
   if (!file) {
-    ESP_LOGE(TAG, "Failed to open file for writing updated JSON data");
+    ESP_LOGE(TAG, "Failed to open file for appending JSON data");
     return;
   }
 
-  file.print(file_content);
+  // Serialize the JSON entry and append it to the file, followed by a newline
+  serializeJson(data_entry, file);
+  file.println();
   file.close();
   ESP_LOGI(TAG, "JSON data appended successfully");
 }
+
 
 
 void SDCardComponent::store_sensor_data(const char *filename) {
@@ -138,14 +111,11 @@ void SDCardComponent::store_sensor_data(const char *filename) {
     mqtt_sent = mqtt::global_mqtt_client->publish(this->publish_data_topic_.c_str(), payload.c_str());
     if (mqtt_sent) {
       ESP_LOGI(TAG, "Data sent to MQTT for timestamp: %s", timestamp);
-      data_entry["sent"] = true;  // Mark as sent if MQTT publish was successful
     } else {
       ESP_LOGW(TAG, "Failed to send data to MQTT for timestamp: %s", timestamp);
-      data_entry["sent"] = false;
     }
   } else {
     ESP_LOGW(TAG, "MQTT not connected, storing data for later for timestamp: %s", timestamp);
-    data_entry["sent"] = false; // Store as unsent if not connected to MQTT
   }
 
   // Append the entire data entry to the JSON file if time is valid and data was not sent
@@ -185,8 +155,6 @@ void SDCardComponent::process_pending_json_entries() {
     return;
   }
 
-  // Write the opening bracket for JSON array in the temp file
-  tempFile.print("[\n");
 
   // Process each line in the original file
   bool first_entry = true;
@@ -218,7 +186,6 @@ void SDCardComponent::process_pending_json_entries() {
       }
     }
 
-    if (!first_entry) tempFile.print(",\n");
     serializeJson(doc, tempFile);
     first_entry = false;
     
@@ -228,7 +195,6 @@ void SDCardComponent::process_pending_json_entries() {
   // Save the current position in the file for the next call
   last_position = file.position();
 
-  tempFile.print("\n]");
   file.close();
   tempFile.close();
 
