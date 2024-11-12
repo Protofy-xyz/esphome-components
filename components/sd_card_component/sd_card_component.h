@@ -16,7 +16,7 @@ class SDCardComponent : public Component {
   void setup() override;
   void loop() override;
   void dump_config() override;
-  float get_setup_priority() const override { return setup_priority::DATA; }
+  float get_setup_priority() const override { return setup_priority::HARDWARE; }
   
   // Method to add a sensor to the SD card component
   void add_sensor(sensor::Sensor *sensor);
