@@ -5,11 +5,8 @@ from esphome.components import sensor,uart, time as time_component
 from esphome.const import CONF_ID, CONF_SENSORS, CONF_TIME_ID, CONF_TRIGGER_ID
 from esphome.cpp_generator import MockObj
 
-CONF_RX = "rx"
-CONF_TX = "tx"
-CONF_BAUDRATE = "baudrate"
 DEPENDENCIES = ["uart"]
-CODEOWNERS = ['@lluis-protofy-xyz']
+CODEOWNERS = ['@lluis-protofy-xyz','@TonProtofy', '@RogerOrRobert', '@ghofraneZirouh']
 
 bc127_ns = cg.esphome_ns.namespace('bc127')
 BC127Component = bc127_ns.class_('BC127Component', cg.Component,uart.UARTDevice,cg.Controller)
