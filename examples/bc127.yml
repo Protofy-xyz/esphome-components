@@ -86,7 +86,7 @@ external_components:
 bc127:
   id: my_bc127
   uart_id: my_uart
-  on_call:
+  on_incoming_call:
     - lambda: |- 
         ESP_LOGD("call", "incoming call");
         ESP_LOGD("incoming call Id: ",  id(my_bc127).callerId.c_str());
