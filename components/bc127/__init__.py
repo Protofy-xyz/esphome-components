@@ -8,10 +8,6 @@ from esphome.cpp_generator import MockObj
 CONF_RX = "rx"
 CONF_TX = "tx"
 CONF_BAUDRATE = "baudrate"
-# CONF_JSON_FILE_NAME = "json_file_name"
-# CONF_INTERVAL_SECONDS = "interval_seconds"
-# CONF_PUBLISH_DATA_WHEN_ONLINE = "publish_data_when_online"
-# CONF_PUBLISH_DATA_TOPIC = "publish_data_topic"
 DEPENDENCIES = ["uart"]
 CODEOWNERS = ['@lluis-protofy-xyz']
 
@@ -27,15 +23,7 @@ BC127OnCallTrigger = bc127_ns.class_('BC127CallTrigger', automation.Trigger.temp
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(BC127Component),
-        # cv.Required(CONF_RX): pins.gpio_input_pin_schema,
-        # cv.Required(CONF_TX): pins.gpio_output_pin_schema,
-        # cv.Required(CONF_BAUDRATE): cv.int_range(9600, 115200),
-        # cv.Required(CONF_SENSORS): cv.ensure_list(cv.use_id(sensor.Sensor)),
-        # cv.Required(CONF_TIME_ID): cv.use_id(time_component.RealTimeClock),
-        # cv.Required(CONF_JSON_FILE_NAME): cv.string_strict,
-        # cv.Optional(CONF_INTERVAL_SECONDS, default=5): cv.positive_time_period_seconds,
-        # cv.Optional(CONF_PUBLISH_DATA_WHEN_ONLINE, default=False): cv.boolean,
-        # cv.Optional(CONF_PUBLISH_DATA_TOPIC): cv.string_strict,
+      
         
         cv.Optional(CONF_ON_BC127_CONNECTED): automation.validate_automation({
         cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(BC127OnConnectedTrigger),
@@ -66,30 +54,3 @@ async def to_code(config):
     for conf in config.get(CONF_ON_BC127_CALL, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(trigger, [(cg.std_string, "bytes")], conf)
-    # GLOBAL_BLE_CONTROLLER_VAR = MockObj(bc127_ns.controller, "->")
-
-    # rx = await cg.gpio_pin_expression(config[CONF_RX])
-    # cg.add(var.set_rx(rx.get_pin()))
-    
-    # tx = await cg.gpio_pin_expression(config[CONF_TX])
-    # cg.add(var.set_tx(tx.get_pin()))
-    
-    # cg.add(var.set_baudrate(config[CONF_BAUDRATE]))
-    
-    # cs_pin = await cg.gpio_pin_expression(config[CONF_CS_PIN])
-    # cg.add(var.set_cs_pin(cs_pin.get_pin()))
-
-    # time = await cg.get_variable(config[CONF_TIME_ID])
-    # cg.add(var.set_time(time))
-
-    # cg.add(var.set_json_file_name(config[CONF_JSON_FILE_NAME]))
-    # cg.add(var.set_interval_seconds(config[CONF_INTERVAL_SECONDS]))
-
-    # cg.add(var.set_publish_data_when_online(config[CONF_PUBLISH_DATA_WHEN_ONLINE]))
-
-    # if CONF_PUBLISH_DATA_TOPIC in config:
-    #     cg.add(var.set_publish_data_topic(config[CONF_PUBLISH_DATA_TOPIC]))
-
-    # for sensor_id in config[CONF_SENSORS]:
-    #     sens = await cg.get_variable(sensor_id)
-    #     cg.add(var.add_sensor(sens))
