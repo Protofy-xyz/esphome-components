@@ -81,14 +81,14 @@ namespace esphome
 
     void BC127Component::process_data(const String &data)
     {
-      //Ready
+      // Ready
       if (data.startsWith("Ready"))
       {
         ESP_LOGI(TAG, "Ready");
         this->set_state(BC127_READY);
         return;
       }
-      //OPEN_OK 13 HFP 0CC6FD08CCAF
+      // OPEN_OK 13 HFP 0CC6FD08CCAF
       if (data.startsWith("OPEN_OK"))
       {
         ESP_LOGD(TAG, "OPEN_OK command received");
@@ -135,15 +135,16 @@ namespace esphome
           ESP_LOGI(TAG, "ID: %s", id.c_str());
           ESP_LOGI(TAG, "Phone Number: %s", phone_number.c_str());
           this->set_state(BC127_INCOMING_CALL);
-          if(this->phoneContactManager.find_contact_by_number(phone_number.c_str())==nullptr){
-              ESP_LOGI(TAG, "Call rejected because the phone number is not in the contact list");
-              this->call_reject();
-              return;
+          if (this->phoneContactManager.find_contact_by_number(phone_number.c_str()) == nullptr)
+          {
+            ESP_LOGI(TAG, "Call rejected because the phone number is not in the contact list");
+            this->call_reject();
+            return;
           };
           this->callerId = this->phoneContactManager.find_contact_by_number(phone_number.c_str())->to_string();
           ESP_LOGI(TAG, "Caller ID: %s", this->callerId.c_str());
           this->add_on_call_callback([this]()
-                                        { ESP_LOGD(TAG, "ADD ON CALL CALLBACK"); });
+                                     { ESP_LOGD(TAG, "ADD ON CALL CALLBACK"); });
           auto &callbacks = on_call_callbacks;
           callbacks.call();
         }
@@ -153,7 +154,7 @@ namespace esphome
         }
         return;
       }
-      //CLOSE_OK 13 HFP 0CC6FD08CCAF
+      // CLOSE_OK 13 HFP 0CC6FD08CCAF
       if (data.startsWith("CLOSE_OK"))
       {
         ESP_LOGD(TAG, "CLOSE_OK command received");
@@ -189,6 +190,10 @@ namespace esphome
       if (data.startsWith("CALL_END"))
       {
         ESP_LOGI(TAG, "Parsed CALL_END command");
+        this->add_on_ended_call_callback([this]()
+                                         { ESP_LOGD(TAG, "ADD ON ENDED CALL CALLBACK"); });
+        auto &callbacks = on_ended_call_callbacks;
+        callbacks.call();
         this->set_state(BC127_CONNECTED);
         return;
       }
@@ -235,7 +240,8 @@ namespace esphome
       }
     }
 
-    void BC127Component::add_phone_contact(const char *name, const char *number){
+    void BC127Component::add_phone_contact(const char *name, const char *number)
+    {
       this->phoneContactManager.add_contact(PhoneContact(name, number));
       ESP_LOGI(TAG, "Adding contact: name: %s, number: %s", name, number);
     }
@@ -257,6 +263,11 @@ namespace esphome
       on_call_callbacks.add(std::move(trigger_function));
     }
 
+    void BC127Component::add_on_ended_call_callback(std::function<void()> &&trigger_function)
+    {
+      on_ended_call_callbacks.add(std::move(trigger_function));
+    }
+
     void BC127Component::dump_config()
     {
       ESP_LOGCONFIG(TAG, "BC127 module:");
@@ -265,33 +276,34 @@ namespace esphome
       ESP_LOGCONFIG(TAG, "  Configured for UART communication with BC127");
     }
 
-    void BC127Component::set_state(int state){
+    void BC127Component::set_state(int state)
+    {
       this->state = state;
-      switch(state){
-        case BC127_NOT_READY:
-          ESP_LOGI(TAG, "Setting state: Not ready");
-          break;
-        case BC127_READY:
-          ESP_LOGI(TAG, "Setting state: Ready");
-          break;
-        case BC127_START_PAIRING:
-          ESP_LOGI(TAG, "Setting state: Starting pairing");
-          break;
-        case BC127_CONNECTED:
-          ESP_LOGI(TAG, "Setting state: Connected");
-          break;
-        case BC127_INCOMING_CALL:
-          ESP_LOGI(TAG, "Setting state: Incoming call");
-          break;
-        case BC127_CALL_IN_COURSE:
-          ESP_LOGI(TAG, "Setting state: Call in course");
-          break;
-        default:
-          ESP_LOGI(TAG, "Setting state: Unknown state");
-          break;
+      switch (state)
+      {
+      case BC127_NOT_READY:
+        ESP_LOGI(TAG, "Setting state: Not ready");
+        break;
+      case BC127_READY:
+        ESP_LOGI(TAG, "Setting state: Ready");
+        break;
+      case BC127_START_PAIRING:
+        ESP_LOGI(TAG, "Setting state: Starting pairing");
+        break;
+      case BC127_CONNECTED:
+        ESP_LOGI(TAG, "Setting state: Connected");
+        break;
+      case BC127_INCOMING_CALL:
+        ESP_LOGI(TAG, "Setting state: Incoming call");
+        break;
+      case BC127_CALL_IN_COURSE:
+        ESP_LOGI(TAG, "Setting state: Call in course");
+        break;
+      default:
+        ESP_LOGI(TAG, "Setting state: Unknown state");
+        break;
       }
     }
-
 
     BC127Component *controller = nullptr;
   } // namespace bc127

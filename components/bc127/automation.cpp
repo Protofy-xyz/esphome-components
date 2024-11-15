@@ -19,6 +19,13 @@ namespace esphome
             obj->add_on_call_callback([this,bytes]()
                                            { this->trigger(bytes); });
         }
+         EndedCallTrigger::EndedCallTrigger(BC127Component *obj)
+        {
+            // std::vector<uint8_t> bytes = obj->bytes;
+            std::string bytes = obj->callerId;
+            obj->add_on_ended_call_callback([this,bytes]()
+                                           { this->trigger(bytes); });
+        }
         
     } // namespace bc127
 } // namespace esphome

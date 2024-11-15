@@ -17,6 +17,10 @@ BC127OnConnectedTrigger = bc127_ns.class_('BC127ConnectedTrigger', automation.Tr
 CONF_ON_INCOMING_CALL = "on_incoming_call"
 IncomingCallTrigger = bc127_ns.class_('IncomingCallTrigger', automation.Trigger.template())
 
+CONF_ON_ENDED_CALL = "on_ended_call"
+EndedCallTrigger = bc127_ns.class_('EndedCallTrigger', automation.Trigger.template())
+
+
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(BC127Component),
@@ -27,6 +31,9 @@ CONFIG_SCHEMA = cv.Schema(
         }),     
         cv.Optional(CONF_ON_INCOMING_CALL): automation.validate_automation({
         cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(IncomingCallTrigger)
+        }),
+        cv.Optional(CONF_ON_ENDED_CALL): automation.validate_automation({
+        cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(EndedCallTrigger)
         })
    
     }
@@ -51,3 +58,7 @@ async def to_code(config):
     for conf in config.get(CONF_ON_INCOMING_CALL, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(trigger, [(cg.std_string, "bytes")], conf)
+    for conf in config.get(CONF_ON_ENDED_CALL, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(trigger, [(cg.std_string, "bytes")], conf)
+

@@ -34,6 +34,8 @@ namespace esphome
       float get_setup_priority() const override { return setup_priority::DATA; }
       void add_on_connected_callback(std::function<void()> &&trigger_function);
       void add_on_call_callback(std::function<void()> &&trigger_function);
+      void add_on_ended_call_callback(std::function<void()> &&trigger_function);
+
 
       void call_answer();
       void call_reject();
@@ -56,6 +58,7 @@ namespace esphome
       void set_state(int state);
       CallbackManager<void()>       on_connected_callbacks;
       CallbackManager<void()>       on_call_callbacks;
+      CallbackManager<void()>       on_ended_call_callbacks;
       PhoneContactManager phoneContactManager;
     };
 
