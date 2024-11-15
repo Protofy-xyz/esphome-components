@@ -15,7 +15,7 @@ CONF_ON_BC127_CONNECTED = "on_connected"
 BC127OnConnectedTrigger = bc127_ns.class_('BC127ConnectedTrigger', automation.Trigger.template())
 
 CONF_ON_INCOMING_CALL = "on_incoming_call"
-OnIncomingCallTrigger = bc127_ns.class_('BC127CallTrigger', automation.Trigger.template())
+IncomingCallTrigger = bc127_ns.class_('IncomingCallTrigger', automation.Trigger.template())
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -26,7 +26,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(BC127OnConnectedTrigger),
         }),     
         cv.Optional(CONF_ON_INCOMING_CALL): automation.validate_automation({
-        cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(OnIncomingCallTrigger)
+        cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(IncomingCallTrigger)
         })
    
     }

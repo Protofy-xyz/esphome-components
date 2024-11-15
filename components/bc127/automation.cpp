@@ -12,7 +12,7 @@ namespace esphome
             obj->add_on_connected_callback([this,bytes]()
                                            { this->trigger(bytes); });
         }
-        BC127CallTrigger::BC127CallTrigger(BC127Component *obj)
+        IncomingCallTrigger::IncomingCallTrigger(BC127Component *obj)
         {
             // std::vector<uint8_t> bytes = obj->bytes;
             std::string bytes = obj->callerId;
