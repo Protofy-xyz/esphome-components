@@ -14,6 +14,8 @@
 #define BC127_CONNECTED 3
 #define BC127_INCOMING_CALL 4
 #define BC127_CALL_IN_COURSE 5
+#define BC127_CALL_BLOCKED 6
+
 // #include <SoftwareSerial.h>
 
 namespace esphome

@@ -134,13 +134,14 @@ namespace esphome
           ESP_LOGI(TAG, "Parsed CALLER_NUMBER command");
           ESP_LOGI(TAG, "ID: %s", id.c_str());
           ESP_LOGI(TAG, "Phone Number: %s", phone_number.c_str());
-          this->set_state(BC127_INCOMING_CALL);
           if (this->phoneContactManager.find_contact_by_number(phone_number.c_str()) == nullptr)
           {
+            this->set_state(BC127_CALL_BLOCKED);
             ESP_LOGI(TAG, "Call rejected because the phone number is not in the contact list");
             this->call_reject();
             return;
-          };
+          } 
+          this->set_state(BC127_INCOMING_CALL);
           this->callerId = this->phoneContactManager.find_contact_by_number(phone_number.c_str())->to_string();
           ESP_LOGI(TAG, "Caller ID: %s", this->callerId.c_str());
           this->add_on_call_callback([this]()
@@ -190,10 +191,12 @@ namespace esphome
       if (data.startsWith("CALL_END"))
       {
         ESP_LOGI(TAG, "Parsed CALL_END command");
+        if (this->state == BC127_CALL_IN_COURSE){
         this->add_on_ended_call_callback([this]()
                                          { ESP_LOGD(TAG, "ADD ON ENDED CALL CALLBACK"); });
         auto &callbacks = on_ended_call_callbacks;
         callbacks.call();
+        }
         this->set_state(BC127_CONNECTED);
         return;
       }
@@ -215,7 +218,7 @@ namespace esphome
     }
     void BC127Component::call_reject()
     {
-      if (this->state == BC127_INCOMING_CALL)
+      if ((this->state == BC127_INCOMING_CALL) || (this->state == BC127_CALL_BLOCKED))
       {
         this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " REJECT");
         ESP_LOGI(TAG, "Rejecting call");
