@@ -1,4 +1,5 @@
 #include "phoneContactManager.h"
+#include <algorithm>
 
 PhoneContact::PhoneContact(const std::string &name, const std::string &number)
     : name_(name), number_(number) {}
