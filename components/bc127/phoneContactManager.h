@@ -12,6 +12,9 @@
         std::string get_number() const;
         std::string to_string() const;
 
+        bool operator==(const PhoneContact &contact) const {
+        return this->name_ == contact.name_ && this->number_ == contact.number_;
+    }
 
     private:
         std::string name_;
