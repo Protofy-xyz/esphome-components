@@ -20,9 +20,9 @@ void PhoneContactManager::add_contact(const PhoneContact &contact) {
 }
 
 void PhoneContactManager::remove_contact(const PhoneContact &contact) {
-    auto it = std::remove(contacts_.begin(), contacts_.end(), contact);
-    if (it != contacts_.end()) {
-        contacts_.erase(it, contacts_.end());
+    auto it = std::remove(this->contacts_.begin(), this->contacts_.end(), contact);
+    if (it != this->contacts_.end()) {
+        this->contacts_.erase(it, this->contacts_.end());
     }
 }
 
