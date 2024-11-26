@@ -200,6 +200,7 @@ namespace esphome
           callbacks.call();
         }
         this->set_state(BC127_CONNECTED);
+        ESP_LOGI(TAG, "After call end");
         return;
       }
       ESP_LOGW(TAG, "Unknown command received: %s", data.c_str());
@@ -237,6 +238,10 @@ namespace esphome
       {
         this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " END");
         ESP_LOGI(TAG, "Ending call");
+        this->add_on_ended_call_callback([this]()
+                                           { ESP_LOGD(TAG, "ADD ON ENDED CALL CALLBACK"); });
+        auto &callbacks = on_ended_call_callbacks;
+        callbacks.call();
         this->set_state(BC127_CONNECTED);
       }
       else
