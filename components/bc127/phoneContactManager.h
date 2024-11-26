@@ -24,6 +24,9 @@
         // Agrega un contacto a la lista
         void add_contact(const PhoneContact &contact);
 
+        // Quita un contacto de la lista
+        void remove_contact(const PhoneContact &contact);
+
         // Limpia la lista de contactos
         void clear_contacts();
 

@@ -44,6 +44,7 @@ namespace esphome
       void call_end();
 
       void add_phone_contact(const char *name, const char *number);
+      void remove_phone_contact(const char *name, const char *number);
 
       void set_onetime(int val) { this->onetime = val; }
       int get_onetime() { return this->onetime; }

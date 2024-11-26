@@ -250,7 +250,11 @@ namespace esphome
       this->phoneContactManager.add_contact(PhoneContact(name, number));
       ESP_LOGI(TAG, "Adding contact: name: %s, number: %s", name, number);
     }
-
+    void BC127Component::remove_phone_contact(const char *name, const char *number)
+    {
+      this->phoneContactManager.remove_contact(PhoneContact(name, number));
+      ESP_LOGI(TAG, "Removing contact: name: %s, number: %s", name, number);
+    }
     void BC127Component::send_command(const std::string &command)
     {
       ESP_LOGD(TAG, "Sending command: %s", command.c_str());
