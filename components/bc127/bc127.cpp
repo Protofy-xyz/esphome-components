@@ -192,13 +192,6 @@ namespace esphome
       {
         ESP_LOGI(TAG, "Parsed CALL_END command");
         this->call_reject();
-        if ((this->state == BC127_CALL_IN_COURSE))
-        {
-          this->add_on_ended_call_callback([this]()
-                                           { ESP_LOGD(TAG, "ADD ON ENDED CALL CALLBACK"); });
-          auto &callbacks = on_ended_call_callbacks;
-          callbacks.call();
-        }
         this->set_state(BC127_CONNECTED);
         ESP_LOGI(TAG, "After call end");
         return;
