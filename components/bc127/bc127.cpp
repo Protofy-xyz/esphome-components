@@ -282,6 +282,28 @@ namespace esphome
       // Ejemplo:
       ESP_LOGCONFIG(TAG, "  Configured for UART communication with BC127");
     }
+    void BC127Component::start_call(const std::string &contact_number) {
+  // Ensure the BC127 is connected before initiating a call
+  if (this->state != BC127_CONNECTED) {
+    ESP_LOGW(TAG, "Cannot start call: BC127 is not connected.");
+    return;
+  }
+
+  // Validate that a phone number is provided
+  if (contact_number.empty()) {
+    ESP_LOGE(TAG, "Cannot start call: Contact number is empty.");
+    return;
+  }
+
+  // Send the command to initiate a call
+  std::string command = "CALL " + contact_number;
+  this->send_command(command);
+
+  ESP_LOGI(TAG, "Initiating call to: %s", contact_number.c_str());
+
+  // Update the state to reflect the call in progress
+  this->set_state(BC127_CALL_IN_COURSE);
+}
 
     void BC127Component::set_state(int state)
     {

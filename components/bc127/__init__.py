@@ -20,6 +20,9 @@ IncomingCallTrigger = bc127_ns.class_('IncomingCallTrigger', automation.Trigger.
 CONF_ON_ENDED_CALL = "on_ended_call"
 EndedCallTrigger = bc127_ns.class_('EndedCallTrigger', automation.Trigger.template())
 
+CONF_START_CALL = "start_call"
+StartCallAction  = bc127_ns.class_('StartCallAction', automation.Action.template())
+
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -34,8 +37,11 @@ CONFIG_SCHEMA = cv.Schema(
         }),
         cv.Optional(CONF_ON_ENDED_CALL): automation.validate_automation({
         cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(EndedCallTrigger)
-        })
-   
+        }),
+        cv.Optional(CONF_START_CALL): automation.validate_automation({
+            cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(StartCallAction),
+            cv.Required("number"): cv.string,
+        }),
     }
 ).extend(cv.COMPONENT_SCHEMA).extend(uart.UART_DEVICE_SCHEMA)
 FINAL_VALIDATE_SCHEMA = uart.final_validate_device_schema(
@@ -61,4 +67,10 @@ async def to_code(config):
     for conf in config.get(CONF_ON_ENDED_CALL, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(trigger, [(cg.std_string, "bytes")], conf)
+
+    for conf in config.get(CONF_START_CALL, []):
+        action = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        number = conf["number"]
+        cg.add(action.set_number(number))
+        await automation.build_automation(action, [], conf)
 
