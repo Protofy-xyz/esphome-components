@@ -196,7 +196,28 @@ namespace esphome
         ESP_LOGI(TAG, "After call end");
         return;
       }
+      if (data.startsWith("CALL_OUTGOING"))
+      {
+        ESP_LOGI(TAG, "Parsed CALL_OUTGOING command");
+        this->set_state(BC127_CALL_OUTGOING);
+        return;
+      }
       ESP_LOGW(TAG, "Unknown command received: %s", data.c_str());
+    }
+    void BC127Component::call_dial(const char *phone_number)
+    {
+
+      if (this->state == BC127_CONNECTED)
+      {
+        if (this->phoneContactManager.find_contact_by_number(phone_number) == nullptr)
+        {
+          ESP_LOGI(TAG, "Not possible to call this phone number because is not in the contact list");
+          return;
+        }
+        this->callerId = this->phoneContactManager.find_contact_by_number(phone_number)->get_number();
+        ESP_LOGI(TAG, "Caller ID: %s", this->callerId.c_str());
+        this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " OUTGOING " + phone_number);
+      }
     }
 
     void BC127Component::call_answer()
@@ -227,12 +248,12 @@ namespace esphome
     }
     void BC127Component::call_end()
     {
-      if (this->state == BC127_CALL_IN_COURSE)
+      if (this->state == BC127_CALL_IN_COURSE || (this->state == BC127_CALL_OUTGOING))
       {
         this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " END");
         ESP_LOGI(TAG, "Ending call");
         this->add_on_ended_call_callback([this]()
-                                           { ESP_LOGD(TAG, "ADD ON ENDED CALL CALLBACK"); });
+                                         { ESP_LOGD(TAG, "ADD ON ENDED CALL CALLBACK"); });
         auto &callbacks = on_ended_call_callbacks;
         callbacks.call();
         this->set_state(BC127_CONNECTED);
@@ -305,6 +326,9 @@ namespace esphome
         break;
       case BC127_CALL_IN_COURSE:
         ESP_LOGI(TAG, "Setting state: Call in course");
+        break;
+      case BC127_CALL_OUTGOING:
+        ESP_LOGI(TAG, "Setting state: Outgoing call in course");
         break;
       default:
         ESP_LOGI(TAG, "Setting state: Unknown state");

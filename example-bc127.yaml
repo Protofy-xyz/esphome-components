@@ -1,0 +1,116 @@
+esphome:
+  name: uartesp32
+  
+logger:
+  level: DEBUG
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+
+wifi:
+  ssid: DEMOFY
+  password: PR0T0FY100
+  power_save_mode: none
+
+mqtt:
+  broker: 192.168.0.31
+  port: 1883
+  topic_prefix: devices/phone
+  username: test
+  password: a
+  on_message:
+    - topic: devices/phone/call
+      then:
+        - logger.log: "call message received"
+        - lambda: |- 
+            if(x == "answer"){
+              ESP_LOGD("call", "answer");
+              id(my_bc127).call_answer();
+            }
+            else if(x == "reject"){
+                ESP_LOGD("call", "reject");
+                id(my_bc127).call_reject();
+            }
+            else if(x == "end"){
+                ESP_LOGD("call", "end");
+                id(my_bc127).call_end();
+            }
+            else{
+                ESP_LOGD("call", "unknown");
+            }
+    - topic: devices/phone/contact/add
+      then:
+        - logger.log: "add contact received"
+        - lambda: |- 
+              size_t space_pos = x.find(' '); // Encuentra la posición del primer espacio
+              if (space_pos == std::string::npos) {
+                  ESP_LOGI("contact", "contact not added due to no space detected");
+                  return;
+              }
+              
+              // Separa la cadena en dos partes usando la posición del espacio
+              std::string name = x.substr(0, space_pos);
+              std::string number = x.substr(space_pos + 1);
+
+              ESP_LOGD("contact ->", "name: %s, number: %s", name.c_str(), number.c_str());
+              
+              id(my_bc127).add_phone_contact(name.c_str(),number.c_str());
+    - topic: devices/phone/contact/call/number
+      then:
+        - logger.log: "calling to number "
+        - lambda: |- 
+            id(my_bc127).call_dial(x.c_str());
+
+script:
+  - id: end_call
+    then:
+      - lambda: |-
+          id(my_bc127).call_end();
+      - logger.log: "pressed button to end call"
+
+uart:
+  id: my_uart
+  tx_pin: GPIO17  
+  rx_pin: GPIO16
+  baud_rate: 9600
+  parity: NONE
+  data_bits: 8 
+  stop_bits: 1
+
+external_components:
+  source: components
+  components: [bc127]
+  refresh: 0s
+
+bc127:
+  id: my_bc127
+  uart_id: my_uart
+  on_incoming_call:
+    - lambda: |- 
+        ESP_LOGD("call", "incoming call");
+        ESP_LOGD("incoming call Id: ",  id(my_bc127).callerId.c_str());
+  on_connected: 
+    - lambda: |-
+    
+        char* char_ptr = new char[bytes.size() + 1]; // +1 si quieres que sea un string con terminación nula
+        
+        // Copia los datos
+        std::copy(bytes.begin(), bytes.end(), char_ptr);
+        char_ptr[bytes.size()] = '\0'; // Añade terminación nula si necesitas que sea un string C
+
+        // Usa `char_ptr` aquí...
+        char char_ptr2[10];
+        itoa(id(my_bc127).get_onetime(), char_ptr2, 10);
+        ESP_LOGD("onetimeis", char_ptr2 );
+        // Cuando termines, libera la memoria para evitar fugas de memoria
+        ESP_LOGD("test",  char_ptr);
+        delete[] char_ptr;
+        id(my_bc127).add_phone_contact("ghofrane", "627118144");
+
+  on_ended_call:
+    logger.log: "executing action: on_call_ended"
+    
+

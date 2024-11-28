@@ -15,6 +15,7 @@
 #define BC127_INCOMING_CALL 4
 #define BC127_CALL_IN_COURSE 5
 #define BC127_CALL_BLOCKED 6
+#define BC127_CALL_OUTGOING 7
 
 // #include <SoftwareSerial.h>
 
@@ -26,7 +27,7 @@ namespace esphome
     class BC127Component : public Component, public uart::UARTDevice
     {
     public:
-      std::vector<uint8_t> bytes = { 'a', 'b','c' };
+      std::vector<uint8_t> bytes = {'a', 'b', 'c'};
       std::string callerId;
       BC127Component();
       virtual ~BC127Component() {}
@@ -38,7 +39,7 @@ namespace esphome
       void add_on_call_callback(std::function<void()> &&trigger_function);
       void add_on_ended_call_callback(std::function<void()> &&trigger_function);
 
-
+      void call_dial(const char *phone_number);
       void call_answer();
       void call_reject();
       void call_end();
@@ -49,19 +50,17 @@ namespace esphome
       void set_onetime(int val) { this->onetime = val; }
       int get_onetime() { return this->onetime; }
 
-
-
     protected:
       int onetime;
       int state = 0;
-      String ble_phone_address= "";
+      String ble_phone_address = "";
       String hfp_connection_id = "";
       void process_data(const String &data);
       void send_command(const std::string &command);
       void set_state(int state);
-      CallbackManager<void()>       on_connected_callbacks;
-      CallbackManager<void()>       on_call_callbacks;
-      CallbackManager<void()>       on_ended_call_callbacks;
+      CallbackManager<void()> on_connected_callbacks;
+      CallbackManager<void()> on_call_callbacks;
+      CallbackManager<void()> on_ended_call_callbacks;
       PhoneContactManager phoneContactManager;
     };
 
