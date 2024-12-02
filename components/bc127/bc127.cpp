@@ -275,7 +275,7 @@ namespace esphome
       ESP_LOGI(TAG, "Removing contact: name: %s, number: %s", name, number);
     }
     const std::vector<std::string> get_contacts(){
-      if(this.phoneContactManager.get_contacts()!= nullptr){
+      if(this->phoneContactManager.get_contacts()!= nullptr){
         std::vector<PhoneContact> contacts = this.phoneContactManager.get_contacts();
         std::vector<std::string> contacts_str;
         for (int i = 0; i < contacts.size(); i++)
