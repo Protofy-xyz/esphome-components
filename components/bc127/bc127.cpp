@@ -276,7 +276,7 @@ namespace esphome
     }
     std::vector<std::string> BC127Component::get_contacts()
     {
-      if (this->phoneContactManager.get_contacts() != nullptr)
+      if (!this->phoneContactManager.get_contacts().empty())
       {
         const std::vector<PhoneContact> &contacts = this->phoneContactManager.get_contacts();
         std::vector<std::string> contacts_str;
