@@ -37,6 +37,7 @@
         const std::vector<PhoneContact> &get_contacts() const;
         
         PhoneContact* find_contact_by_number(const std::string &number);
+        PhoneContact * find_contact_by_name(const std::string & name);
 
     private:
         std::vector<PhoneContact> contacts_;
