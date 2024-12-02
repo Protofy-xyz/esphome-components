@@ -276,7 +276,7 @@ namespace esphome
     }
     const std::vector<std::string> get_contacts(){
       if(this->phoneContactManager.get_contacts()!= nullptr){
-        std::vector<PhoneContact> contacts = this.phoneContactManager.get_contacts();
+        std::vector<PhoneContact> contacts = this->phoneContactManager.get_contacts();
         std::vector<std::string> contacts_str;
         for (int i = 0; i < contacts.size(); i++)
         {
@@ -284,7 +284,7 @@ namespace esphome
         }
         return contacts_str;
       };
-      return nullptr;
+      return {};
     }
 
     void BC127Component::send_command(const std::string &command)
