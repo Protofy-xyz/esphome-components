@@ -43,3 +43,11 @@ PhoneContact* PhoneContactManager::find_contact_by_number(const std::string &num
   }
   return nullptr;  // Retorna nullptr si no encuentra el número
 }
+PhoneContact* PhoneContactManager::find_contact_by_name(const std::string &name) {
+  for (auto &contact : contacts_) {
+    if (contact.get_name() == name) {
+      return &contact;  // Retorna un puntero al contacto encontrado
+    }
+  }
+  return nullptr;  // Retorna nullptr si no encuentra el número
+}
