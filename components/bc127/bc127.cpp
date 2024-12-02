@@ -278,7 +278,7 @@ namespace esphome
     {
       if (this->phoneContactManager.get_contacts() != nullptr)
       {
-        std::vector<PhoneContact> contacts = *this->phoneContactManager.get_contacts();
+        const std::vector<PhoneContact> &contacts = this->phoneContactManager.get_contacts();
         std::vector<std::string> contacts_str;
         for (const auto &contact : contacts)
         {
