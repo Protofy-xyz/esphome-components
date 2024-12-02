@@ -274,16 +274,18 @@ namespace esphome
       this->phoneContactManager.remove_contact(PhoneContact(name, number));
       ESP_LOGI(TAG, "Removing contact: name: %s, number: %s", name, number);
     }
-    const std::vector<std::string> get_contacts(){
-      if(this->phoneContactManager.get_contacts()!= nullptr){
-        std::vector<PhoneContact> contacts = this->phoneContactManager.get_contacts();
+    std::vector<std::string> BC127Component::get_contacts()
+    {
+      if (this->phoneContactManager.get_contacts() != nullptr)
+      {
+        std::vector<PhoneContact> contacts = *this->phoneContactManager.get_contacts();
         std::vector<std::string> contacts_str;
-        for (int i = 0; i < contacts.size(); i++)
+        for (const auto &contact : contacts)
         {
-          contacts_str.push_back(contacts[i].to_string());
+          contacts_str.push_back(contact.to_string());
         }
         return contacts_str;
-      };
+      }
       return {};
     }
 

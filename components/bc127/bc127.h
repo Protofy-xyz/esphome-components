@@ -46,7 +46,7 @@ namespace esphome
 
       void add_phone_contact(const char *name, const char *number);
       void remove_phone_contact(const char *name, const char *number);
-      const std::vector<std::string> get_contacts();
+      std::vector<std::string> get_contacts();
 
 
       void set_onetime(int val) { this->onetime = val; }
