@@ -1,5 +1,7 @@
 #include "gm77.h"
 #include "esphome/core/log.h"
+#include <ArduinoJson.h>
+
 
 namespace esphome {
 namespace gm77 {

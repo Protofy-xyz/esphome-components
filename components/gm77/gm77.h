@@ -1,8 +1,14 @@
 #ifndef ESPHOME_COMPONENTS_GM77_GM77_H
 #define ESPHOME_COMPONENTS_GM77_GM77_H
 
+#pragma once
+
+#include "esphome/core/hal.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
+#include "esphome.h"
+#include <ArduinoJson.h>
+
 
 namespace esphome {
 namespace gm77 {
