@@ -9,7 +9,6 @@
 #include "esphome.h"
 #include <ArduinoJson.h>
 
-
 namespace esphome {
 namespace gm77 {
 
@@ -22,7 +21,9 @@ class GM77Component : public uart::UARTDevice, public Component {
 
  private:
   static const char *const TAG;
-  void process_data(const std::string &data);
+
+  bool available();
+  char read();
 };
 
 }  // namespace gm77

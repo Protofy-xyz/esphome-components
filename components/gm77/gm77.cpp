@@ -2,15 +2,12 @@
 #include "esphome/core/log.h"
 #include <ArduinoJson.h>
 
-
 namespace esphome {
 namespace gm77 {
 
 static const char *const TAG = "gm77";
 
-GM77Component::GM77Component() {
-  // Constructor vacío o inicialización si es necesario
-}
+GM77Component::GM77Component() {}
 
 void GM77Component::setup() {
   ESP_LOGCONFIG(TAG, "Setting up GM77...");
@@ -25,20 +22,21 @@ void GM77Component::loop() {
     while (this->available()) {
       char c = this->read();
       received_data += c;
-
-      // If end of line character is detected, process the command
-      if (c == '\r') {
-        ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
-        this->process_data(received_data);
-        received_data.clear();  // Reset for the next message
-      }
     }
+
+    // Process received data
+    ESP_LOGD(TAG, "Received data: %s", received_data.c_str());
   }
 }
 
-void GM77Component::process_data(const std::string &data) {
-  ESP_LOGD(TAG, "Processing data: %s", data.c_str());
-  // Implement data processing logic here
+bool GM77Component::available() {
+  // Implement UART availability check
+  return false;
+}
+
+char GM77Component::read() {
+  // Implement UART read
+  return '\0';
 }
 
 }  // namespace gm77
