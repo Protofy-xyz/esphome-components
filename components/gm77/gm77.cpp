@@ -1,6 +1,5 @@
 #include "gm77.h"
 #include "esphome/core/log.h"
-#include "esphome/core/helpers.h"
 
 namespace esphome {
 namespace gm77 {
@@ -43,7 +42,15 @@ void GM77Component::loop() {
 void GM77Component::send_command(const uint8_t *command, size_t length) {
   this->write_array(command, length);
   this->flush();
-  ESP_LOGD(TAG, "Command sent: %s", esphome::helpers::hexencode(command, length).c_str());
+  
+  // Log the command bytes as a sequence of hexadecimal values
+  std::string hex_str;
+  for (size_t i = 0; i < length; ++i) {
+    char buf[4];
+    snprintf(buf, sizeof(buf), "%02X ", command[i]);
+    hex_str += buf;
+  }
+  ESP_LOGD(TAG, "Command sent: %s", hex_str.c_str());
 }
 
 void GM77Component::enable_continuous_scan() {
