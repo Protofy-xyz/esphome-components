@@ -50,6 +50,7 @@ void GM77Component::send_command(const uint8_t *command, size_t length) {
     snprintf(buf, sizeof(buf), "%02X ", command[i]);
     hex_str += buf;
   }
+  }
   ESP_LOGD(TAG, "Command sent: %s", hex_str.c_str());
 }
 
