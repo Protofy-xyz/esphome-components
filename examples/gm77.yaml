@@ -1,0 +1,28 @@
+esphome:
+  name: gm77
+  friendly_name: gm77_example
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+external_components:
+  - source: github://Protofy-xyz/esphome-components
+
+# en local es 
+# external_components:
+#  - source: esphome-components/components 
+
+logger:
+ level: DEBUG
+
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO17
+  rx_pin: GPIO18
+  baud_rate: 9600
+
+gm77:
+  id: my_gm77
