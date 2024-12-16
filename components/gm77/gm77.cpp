@@ -12,8 +12,6 @@ GM77Component::GM77Component() {
 
 void GM77Component::setup() {
   ESP_LOGCONFIG(TAG, "Setting up GM77...");
-  // Enable continuous scan mode on setup
-  this->enable_continuous_scan();
 }
 
 void GM77Component::loop() {
@@ -36,34 +34,10 @@ void GM77Component::loop() {
   }
 }
 
-void GM77Component::send_command(const std::string &command) {
-  this->write_array(reinterpret_cast<const uint8_t *>(command.c_str()), command.length());
-  this->flush();
-  ESP_LOGD(TAG, "Command sent: %s", command.c_str());
-}
-
-void GM77Component::enable_continuous_scan() {
-  this->send_command(SCAN_ENABLE_COMMAND);
-  this->send_command(CONTINUOUS_MODE_COMMAND);
-}
-
-void GM77Component::disable_scan() {
-  this->send_command(SCAN_DISABLE_COMMAND);
-}
-
 void GM77Component::process_data(const std::string &data) {
-  if (data.find("SCAN_SUCCESS") != std::string::npos) {
-    ESP_LOGD(TAG, "Scan successful: %s", data.c_str());
-    this->start_decode();
-  } else {
-    ESP_LOGD(TAG, "Scan not successful: %s", data.c_str());
-  }
+  ESP_LOGD(TAG, "Processing data: %s", data.c_str());
+  // Implement data processing logic here
 }
 
-void GM77Component::start_decode() {
-  // Implement decoding logic here
-  ESP_LOGD(TAG, "Decoding started");
-}
-
-} // namespace gm77
-} // namespace esphome
+}  // namespace gm77
+}  // namespace esphome
