@@ -18,7 +18,6 @@ class GM77Component : public Component, public uart::UARTDevice {
   void disable_continuous_scan();
   void start_decode();
   void stop_decode();
-  void handle_not_read();
 
  protected:
   void send_command(const uint8_t *command, size_t length);

@@ -6,9 +6,14 @@ namespace gm77 {
 
 static const char *const TAG = "gm77";
 
+GM77Component::GM77Component() {
+  // Constructor vacío o inicialización si es necesario
+}
+
 void GM77Component::setup() {
   ESP_LOGCONFIG(TAG, "Setting up GM77...");
-  // Additional setup if needed
+  // Enable continuous scan mode on setup
+  this->enable_continuous_scan();
 }
 
 void GM77Component::loop() {
@@ -25,6 +30,9 @@ void GM77Component::loop() {
       if (c == '\r') {
         ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
         // Process the received data
+        if (!received_data.empty()) {
+          this->start_decode();
+        }
         received_data.clear();  // Reset for the next message
       }
     }
@@ -59,12 +67,6 @@ void GM77Component::stop_decode() {
   uint8_t command[] = {0x04, 0xE5, 0x04, 0x00, 0xFF, 0x13};
   send_command(command, sizeof(command));
   ESP_LOGD(TAG, "Decoding stopped");
-}
-
-void GM77Component::handle_not_read() {
-  uint8_t not_read_message[] = {0x07, 0xC6, 0x04, 0x08, 0x00, 0x5E, 0x01, 0xFE, 0xC8};
-  // Handle the "Not read" message
-  ESP_LOGD(TAG, "Not read message received");
 }
 
 }  // namespace gm77
