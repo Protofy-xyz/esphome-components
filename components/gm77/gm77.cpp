@@ -29,54 +29,41 @@ void GM77Component::loop() {
       // If end of line character is detected, process the command
       if (c == '\r') {
         ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
-        // Process the received data
-        if (!received_data.empty()) {
-          this->start_decode();
-        }
+        this->process_data(received_data);
         received_data.clear();  // Reset for the next message
       }
     }
   }
 }
 
-void GM77Component::send_command(const uint8_t *command, size_t length) {
-  this->write_array(command, length);
+void GM77Component::send_command(const std::string &command) {
+  this->write_array(reinterpret_cast<const uint8_t *>(command.c_str()), command.length());
   this->flush();
-  
-  // Log the command bytes as a sequence of hexadecimal values
-  std::string hex_str;
-  for (size_t i = 0; i < length; ++i) {
-    char buf[4];
-    snprintf(buf, sizeof(buf), "%02X ", command[i]);
-    hex_str += buf;
-  }
-  }
-  ESP_LOGD(TAG, "Command sent: %s", hex_str.c_str());
+  ESP_LOGD(TAG, "Command sent: %s", command.c_str());
 }
 
 void GM77Component::enable_continuous_scan() {
-  uint8_t command[] = {0x04, 0xE9, 0x04, 0x00, 0xFF, 0x0F};
-  send_command(command, sizeof(command));
-  ESP_LOGD(TAG, "Continuous scan mode enabled");
+  this->send_command(SCAN_ENABLE_COMMAND);
+  this->send_command(CONTINUOUS_MODE_COMMAND);
 }
 
-void GM77Component::disable_continuous_scan() {
-  uint8_t command[] = {0x04, 0xEA, 0x04, 0x00, 0xFF, 0x0E};
-  send_command(command, sizeof(command));
-  ESP_LOGD(TAG, "Continuous scan mode disabled");
+void GM77Component::disable_scan() {
+  this->send_command(SCAN_DISABLE_COMMAND);
+}
+
+void GM77Component::process_data(const std::string &data) {
+  if (data.find("SCAN_SUCCESS") != std::string::npos) {
+    ESP_LOGD(TAG, "Scan successful: %s", data.c_str());
+    this->start_decode();
+  } else {
+    ESP_LOGD(TAG, "Scan not successful: %s", data.c_str());
+  }
 }
 
 void GM77Component::start_decode() {
-  uint8_t command[] = {0x04, 0xE4, 0x04, 0x00, 0xFF, 0x14};
-  send_command(command, sizeof(command));
+  // Implement decoding logic here
   ESP_LOGD(TAG, "Decoding started");
 }
 
-void GM77Component::stop_decode() {
-  uint8_t command[] = {0x04, 0xE5, 0x04, 0x00, 0xFF, 0x13};
-  send_command(command, sizeof(command));
-  ESP_LOGD(TAG, "Decoding stopped");
-}
-
-}  // namespace gm77
-}  // namespace esphome
+} // namespace gm77
+} // namespace esphome
