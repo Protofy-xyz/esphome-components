@@ -6,6 +6,10 @@ namespace gm77 {
 
 static const char *const TAG = "gm77";
 
+GM77Component::GM77Component() {
+  // Constructor vacío o inicialización si es necesario
+}
+
 void GM77Component::setup() {
   ESP_LOGCONFIG(TAG, "Setting up GM77...");
   // Additional setup if needed
@@ -25,6 +29,9 @@ void GM77Component::loop() {
       if (c == '\r') {
         ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
         // Process the received data
+        if (received_data.find("QR") != std::string::npos || received_data.find("BARCODE") != std::string::npos) {
+          this->start_decode();
+        }
         received_data.clear();  // Reset for the next message
       }
     }
