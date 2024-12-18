@@ -1,6 +1,3 @@
-#ifndef ESPHOME_COMPONENTS_GM77_GM77_H
-#define ESPHOME_COMPONENTS_GM77_GM77_H
-
 #pragma once
 
 #include "esphome/core/hal.h"
@@ -9,24 +6,32 @@
 #include "esphome.h"
 #include <ArduinoJson.h>
 
-namespace esphome {
-namespace gm77 {
+// #include <SoftwareSerial.h>
 
-class GM77Component : public uart::UARTDevice, public Component {
- public:
-  GM77Component();
+namespace esphome
+{
+  namespace gm77
+  {
 
-  void setup() override;
-  void loop() override;
+    class GM77Component : public Component, public uart::UARTDevice
+    {
+    public:
+      GM77Component();
+      virtual ~GM77Component() {}
+      void setup() override;
+      void loop() override;
+      void dump_config() override;
+      float get_setup_priority() const override { return setup_priority::DATA; }
 
- private:
-  static const char *const TAG;
+      void send_command(const uint8_t *command, size_t length);
+      void wake_up();
+      void led_on();
 
-  bool available();
-  char read();
-};
 
-}  // namespace gm77
-}  // namespace esphome
+    protected:
+      void process_data(const String &data);
+    };
 
-#endif  // ESPHOME_COMPONENTS_GM77_GM77_H
+    extern GM77Component *controller;
+  }
+}
