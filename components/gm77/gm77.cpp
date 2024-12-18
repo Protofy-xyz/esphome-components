@@ -93,17 +93,15 @@ void GM77Component::start_decode() {
 }
 
 void GM77Component::process_data(const String &data) {
-
-   this->add_on_tag_callback([this]()
-                                     { ESP_LOGD(TAG, "ADD ON TAG CALLBACK"); });
-          auto &callbacks = on_tag_callbacks;
-          callbacks.call();
+  this->tag = data.c_str();
+  this->add_on_tag_callback([this]() { ESP_LOGD(TAG, "ADD ON TAG CALLBACK"); });
+  auto &callbacks = on_tag_callbacks;
+  callbacks.call();
 }
 
-void GM77Component::add_on_tag_callback(std::function<void()> &&trigger_function)
-    {
-      on_tag_callbacks.add(std::move(trigger_function));
-    }
+void GM77Component::add_on_tag_callback(std::function<void()> &&trigger_function) {
+  on_tag_callbacks.add(std::move(trigger_function));
+}
 void GM77Component::dump_config() {
   ESP_LOGCONFIG(TAG, "GM77 module configuration:");
   ESP_LOGCONFIG(TAG, "  Configured for UART communication");

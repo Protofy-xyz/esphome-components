@@ -36,7 +36,10 @@ external_components:
 gm77:
   id: my_gm77
   on_tag:
-    logger.log: "on_tag triggered"
+    - lambda: |- 
+        ESP_LOGD("barcode", "barcode detected");
+        ESP_LOGD("tag", "this is the tag: %s",  id(my_gm77).tag.c_str());
+    
 
 script:
   - id: execute_gm77_commands
@@ -50,6 +53,9 @@ script:
 
 
 
+
+                
+ 
 
                 
  
