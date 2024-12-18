@@ -1,28 +1,52 @@
-esphome:
-  name: gm77
-  friendly_name: gm77_example
 
+esphome:
+  on_boot:
+    then: 
+      script.execute: execute_gm77_commands
+  name: gm77
   platformio_options:
-      lib_deps:
-        - ArduinoJson
+    board_build.flash_mode: dio
+    board_build.arduino.memory_type: opi_opi
+    board_upload.maximum_ram_size: 524288
+    build_flags:
+      - '-DBOARD_HAS_PSRAM'
+      - '-DARDUINO_USB_CDC_ON_BOOT=1'
+      - '-mfix-esp32-psram-cache-issue'
+
 
 esp32:
   board: esp32-s3-devkitc-1
   framework:
     type: arduino
 
-external_components:
-  - source: github://Protofy-xyz/esphome-components
-
 logger:
- level: DEBUG
-
+  level: VERY_VERBOSE  
 
 uart:
   id: uart_bus
-  tx_pin: GPIO17
-  rx_pin: GPIO18
-  baud_rate: 9600
+  tx_pin: GPIO17 
+  rx_pin: GPIO18 
+  baud_rate: 9600  
+
+external_components:
+  source: esphome-components/components
+  components: [gm77]
+  refresh: 0s
 
 gm77:
-  id: my_gm77
+  id: my_gm77  
+
+script:
+  - id: execute_gm77_commands
+    then:
+      - lambda: |-
+          id(my_gm77).wake_up();  
+      - delay: 500ms
+      - lambda: |-
+          id(my_gm77).led_on();  
+      - delay: 50ms     
+      -  lambda: |-
+           id(my_gm77).continuous_scanning();  
+      - logger.log: "continuous scanning mode enabled"
+
+                

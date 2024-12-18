@@ -26,30 +26,8 @@ void GM77Component::setup() {
     return; // Avoid further initialization if another instance exists
   }
 
-  this->send_command("RESET");
-  ESP_LOGCONFIG(TAG, "Module reset command sent");
 }
 
-// Loop method
-void GM77Component::loop() {
-  // Check if data is available on UART
-  if (this->available()) {
-    std::string received_data;
-
-    // Read data from UART
-    while (this->available()) {
-      char c = this->read();
-      received_data += c;
-
-      // If newline is detected, process the command
-      if (c == '\r') {
-        ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
-        this->process_data(received_data);
-        received_data.clear(); // Clear the buffer for the next message
-      }
-    }
-  }
-}
 
 // Send a raw command to the module
 void GM77Component::send_command(const uint8_t *command, size_t length) {
@@ -73,7 +51,26 @@ void GM77Component::led_on() {
   ESP_LOGI(TAG, "LED ON command sent");
 }
 
+void GM77Component::scan_enable() {
+  const uint8_t scan_enable_command[] = {0x04, 0xE4, 0x04, 0x00, 0xFF, 0x14};  
+  this->send_command(scan_enable_command, sizeof(scan_enable_command));
+  ESP_LOGI(TAG, "Scan enable command sent");
+}
+
+void GM77Component::continuous_scanning() {
+  const uint8_t continuous_scanning_command[] = {0x07, 0xC6, 0x04, 0x08, 0x00, 0x8A, 0x04, 0xFE, 0x99};   
+  this->send_command(continuous_scanning_command, sizeof(continuous_scanning_command));
+  ESP_LOGI(TAG, "Continuous scanning command sent");
+
+}
+
+void GM77Component::start_decode() {
+  const uint8_t start_decode_command[] = {0x04, 0xE4, 0x04, 0x00, 0xFF, 0x14};  
+  this->send_command(start_decode_command, sizeof(start_decode_command));
+  ESP_LOGI(TAG, "Start decode command sent");
 // Dump configuration
+}
+
 void GM77Component::dump_config() {
   ESP_LOGCONFIG(TAG, "GM77 module configuration:");
   ESP_LOGCONFIG(TAG, "  Configured for UART communication");
