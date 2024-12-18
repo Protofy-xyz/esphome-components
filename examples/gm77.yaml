@@ -34,19 +34,23 @@ external_components:
   refresh: 0s
 
 gm77:
-  id: my_gm77  
+  id: my_gm77
+  on_tag:
+    logger.log: "on_tag triggered"
 
 script:
   - id: execute_gm77_commands
     then:
       - lambda: |-
           id(my_gm77).wake_up();  
-      - delay: 500ms
+      - delay: 50ms
       - lambda: |-
-          id(my_gm77).led_on();  
-      - delay: 50ms     
-      -  lambda: |-
-           id(my_gm77).continuous_scanning();  
-      - logger.log: "continuous scanning mode enabled"
+          id(my_gm77).start_decode();  
 
+
+
+
+
+                
+ 
                 
