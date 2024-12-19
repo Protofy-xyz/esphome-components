@@ -38,13 +38,19 @@ void GM77Component::loop() {
       // ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
       // Si detectamos el carácter de fin de línea, procesamos el comando
       if (c == '\r') {
-        ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
-        this->process_data(received_data);
+        received_data.trim();  // Remove leading and trailing whitespace
+        if (received_data.length() > 0) {  // Ensure data is not empty
+          ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
+          this->process_data(received_data);
+        } else {
+          ESP_LOGD(TAG, "Received invalid data (empty or whitespace), skipping processing");
+        }
         received_data = "";  // Reinicia para el próximo mensaje
       }
     }
   }
 }
+
 // Send a raw command to the module
 void GM77Component::send_command(const uint8_t *command, size_t length) {
   for (size_t i = 0; i < length; ++i) {
