@@ -191,7 +191,7 @@ namespace esphome
       if (data.startsWith("CALL_END"))
       {
         ESP_LOGI(TAG, "Parsed CALL_END command");
-        this->call_reject();
+        this->call_end();
         this->set_state(BC127_CONNECTED);
         ESP_LOGI(TAG, "After call end");
         return;
