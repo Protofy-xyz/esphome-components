@@ -115,15 +115,14 @@ void BC127Component::process_data(const String &data) {
       ESP_LOGI(TAG, "ID: %s", id.c_str());
       ESP_LOGI(TAG, "Phone Number: %s", phone_number.c_str());
 
-      // ADDED: only block calls if device is locked
-      // We'll consider the device locked if time_arg is not empty
-      bool device_is_locked = !id(time_arg).empty();
+      // Only block calls if device is locked
+      bool device_is_locked = this->locked_;  // <--- Use our internal locked_ flag
 
       if (device_is_locked) {
         // If locked => block calls not in contact list
         if (this->phoneContactManager.find_contact_by_number(phone_number.c_str()) == nullptr) {
           this->set_state(BC127_CALL_BLOCKED);
-          ESP_LOGI(TAG, "Call rejected because the phone number is not in the contact list and device is locked");
+          ESP_LOGI(TAG, "Call rejected: number not in contact list and device locked");
           this->call_reject();
           return;
         }
@@ -131,12 +130,13 @@ void BC127Component::process_data(const String &data) {
       // If unlocked => do NOT block any number
 
       this->set_state(BC127_INCOMING_CALL);
+
       // If contact is in the list, store the name:phone in callerId
       PhoneContact *c = this->phoneContactManager.find_contact_by_number(phone_number.c_str());
       if (c != nullptr) {
         this->callerId = c->to_string();
       } else {
-        // If not found and unlocked => store just phone
+        // Not in list but we're unlocked => store phone as "Unknown"
         this->callerId = std::string("Unknown:") + phone_number.c_str();
       }
 
@@ -169,8 +169,8 @@ void BC127Component::process_data(const String &data) {
       if (var2.startsWith("HFP")) {
         this->hfp_connection_id = "";
         this->ble_phone_address = "";
-        ESP_LOGI(TAG, "HFP connection id: %s", this->hfp_connection_id.c_str());
-        ESP_LOGI(TAG, "BLE phone address: %s", this->ble_phone_address.c_str());
+        ESP_LOGI(TAG, "HFP connection id cleared");
+        ESP_LOGI(TAG, "BLE phone address cleared");
         this->set_state(BC127_READY);
       }
     } else {
@@ -294,34 +294,37 @@ void BC127Component::dump_config() {
 void BC127Component::set_state(int state) {
   this->state = state;
   switch (state) {
-  case BC127_NOT_READY:
-    ESP_LOGI(TAG, "Setting state: Not ready");
-    break;
-  case BC127_READY:
-    ESP_LOGI(TAG, "Setting state: Ready");
-    break;
-  case BC127_START_PAIRING:
-    ESP_LOGI(TAG, "Setting state: Starting pairing");
-    break;
-  case BC127_CONNECTED:
-    ESP_LOGI(TAG, "Setting state: Connected");
-    break;
-  case BC127_INCOMING_CALL:
-    ESP_LOGI(TAG, "Setting state: Incoming call");
-    break;
-  case BC127_CALL_IN_COURSE:
-    ESP_LOGI(TAG, "Setting state: Call in course");
-    break;
-  case BC127_CALL_OUTGOING:
-    ESP_LOGI(TAG, "Setting state: Outgoing call in course");
-    break;
-  default:
-    ESP_LOGI(TAG, "Setting state: Unknown state");
-    break;
+    case BC127_NOT_READY:
+      ESP_LOGI(TAG, "Setting state: Not ready");
+      break;
+    case BC127_READY:
+      ESP_LOGI(TAG, "Setting state: Ready");
+      break;
+    case BC127_START_PAIRING:
+      ESP_LOGI(TAG, "Setting state: Starting pairing");
+      break;
+    case BC127_CONNECTED:
+      ESP_LOGI(TAG, "Setting state: Connected");
+      break;
+    case BC127_INCOMING_CALL:
+      ESP_LOGI(TAG, "Setting state: Incoming call");
+      break;
+    case BC127_CALL_IN_COURSE:
+      ESP_LOGI(TAG, "Setting state: Call in course");
+      break;
+    case BC127_CALL_BLOCKED:
+      ESP_LOGI(TAG, "Setting state: Call blocked");
+      break;
+    case BC127_CALL_OUTGOING:
+      ESP_LOGI(TAG, "Setting state: Outgoing call in course");
+      break;
+    default:
+      ESP_LOGI(TAG, "Setting state: Unknown state");
+      break;
   }
 }
 
 BC127Component *controller = nullptr;
 
-} // namespace bc127
-} // namespace esphome
+}  // namespace bc127
+}  // namespace esphome
