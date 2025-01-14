@@ -239,6 +239,7 @@ namespace esphome
       {
         this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " REJECT");
         ESP_LOGI(TAG, "Rejecting call");
+        this->call_end();  
         this->set_state(BC127_CONNECTED);
       }
       else
