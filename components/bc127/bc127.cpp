@@ -115,9 +115,8 @@ void BC127Component::process_data(const String &data) {
       ESP_LOGI(TAG, "ID: %s", id.c_str());
       ESP_LOGI(TAG, "Phone Number: %s", phone_number.c_str());
 
-      // Read the lock state from YAML globals
-      bool device_is_locked = this->get_parent()->get_globals()->get<bool>(id(is_locked));
-      ESP_LOGD(TAG, "Device lock state from globals: %s", device_is_locked ? "true" : "false");
+      // Only block calls if device is locked
+      bool device_is_locked = this->locked_;  // <--- Use our internal locked_ flag
 
       if (device_is_locked) {
         // If locked => block calls not in contact list
@@ -241,7 +240,7 @@ void BC127Component::call_end() {
     callbacks.call();
     this->set_state(BC127_CONNECTED);
   } else {
-    ESP_LOGW(TAG, "No ongoing call to end");
+    ESP_LOGW(TAG, "No incoming call to answer");
   }
 }
 
