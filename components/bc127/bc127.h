@@ -49,9 +49,9 @@ class BC127Component : public Component, public uart::UARTDevice {
   void set_onetime(int val) { this->onetime = val; }
   int get_onetime() { return this->onetime; }
 
-  // -------------------------------
-  // NEW: Provide a setter for 'locked'
-  // -------------------------------
+  // ------------------------------------------------
+  // NEW: Provide a setter for 'locked_'
+  // ------------------------------------------------
   void set_locked(bool locked) { this->locked_ = locked; }
 
  protected:
@@ -69,9 +69,9 @@ class BC127Component : public Component, public uart::UARTDevice {
 
   PhoneContactManager phoneContactManager;
 
-  // -------------------------------
-  // NEW: track locked/unlocked internally
-  // -------------------------------
+  // ------------------------------------------------
+  // Track locked/unlocked internally
+  // ------------------------------------------------
   bool locked_{false};
 };
 
