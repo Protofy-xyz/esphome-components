@@ -137,7 +137,7 @@ void BC127Component::process_data(const String &data) {
         this->callerId = c->to_string();
       } else {
         // Not in list but we're unlocked => store phone as "Unknown"
-        this->callerId = std::string("Unknown:") + phone_number.c_str();
+        this->callerId = phone_number.c_str();
       }
 
       ESP_LOGI(TAG, "Caller ID: %s", this->callerId.c_str());
