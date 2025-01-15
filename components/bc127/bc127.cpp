@@ -116,8 +116,7 @@ void BC127Component::process_data(const String &data) {
       ESP_LOGI(TAG, "Phone Number: %s", phone_number.c_str());
 
       // Only block calls if device is locked
-      bool device_is_locked = this->locked_;  // <--- Use our internal locked_ flag
-
+      bool device_is_locked = this->locked_;  
       if (device_is_locked) {
         // If locked => block calls not in contact list
         if (this->phoneContactManager.find_contact_by_number(phone_number.c_str()) == nullptr) {
@@ -136,7 +135,7 @@ void BC127Component::process_data(const String &data) {
       if (c != nullptr) {
         this->callerId = c->to_string();
       } else {
-        // Not in list but we're unlocked => store phone as "Unknown"
+        // Not in list (and presumably unlocked) => store phone as "Unknown"
         this->callerId = std::string("Unknown:") + phone_number.c_str();
       }
 
@@ -163,7 +162,7 @@ void BC127Component::process_data(const String &data) {
     if (first_space != -1 && second_space != -1 && third_space != -1) {
       String var1 = data.substring(first_space + 1, second_space); 
       String var2 = data.substring(second_space + 1, third_space);
-      String var3 = data.substring(third_space + 1);               
+      String var3 = data.substring(third_space + 1);
       ESP_LOGD(TAG, "Parsed values: var1=%s, var2=%s, var3=%s",
                var1.c_str(), var2.c_str(), var3.c_str());
       if (var2.startsWith("HFP")) {
@@ -322,6 +321,14 @@ void BC127Component::set_state(int state) {
       ESP_LOGI(TAG, "Setting state: Unknown state");
       break;
   }
+}
+
+// ------------------------------------------------
+// NEW: Implementation of set_locked(bool)
+// ------------------------------------------------
+void BC127Component::set_locked(bool locked) {
+  this->locked_ = locked;
+  ESP_LOGI(TAG, "bc127 locked_ set to: %s", locked ? "true" : "false");
 }
 
 BC127Component *controller = nullptr;
