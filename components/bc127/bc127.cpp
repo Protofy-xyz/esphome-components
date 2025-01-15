@@ -7,9 +7,6 @@ namespace bc127 {
 
 static const char *const TAG = "bc127";
 
-// --------------------
-// Constructor
-// --------------------
 BC127Component::BC127Component() {
   // Any constructor logic if needed
 }
@@ -28,7 +25,7 @@ void BC127Component::setup() {
 }
 
 void BC127Component::loop() {
-  // Check if data is available on UART
+  // Check if data is available on the UART
   if (this->available()) {
     String received_data = "";
 
@@ -57,7 +54,7 @@ void BC127Component::loop() {
     return;
   }
 
-  // Example "one-time" logic
+  // "one-time" logic example
   if (this->onetime == 0) {
     this->set_onetime(1);
     ESP_LOGD(TAG, "LOOP one time");
@@ -135,12 +132,11 @@ void BC127Component::process_data(const String &data) {
       // If unlocked => allow any number
       this->set_state(BC127_INCOMING_CALL);
 
-      // If contact is in the list, store name:phone in callerId
+      // If contact is in the list, store "Name:Number" in callerId
       PhoneContact *c = this->phoneContactManager.find_contact_by_number(phone_number.c_str());
       if (c != nullptr) {
-        this->callerId = c->to_string();  // "Name:Number"
+        this->callerId = c->to_string();
       } else {
-        // Not in list => "Unknown:123"
         this->callerId = std::string("Unknown:") + phone_number.c_str();
       }
 
@@ -218,15 +214,14 @@ void BC127Component::call_dial(const char *phone_number) {
     ESP_LOGI(TAG, "Caller ID: %s", this->callerId.c_str());
 
     // Send the call command
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) 
+    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str())
                        + " OUTGOING " + phone_number);
   }
 }
 
 void BC127Component::call_answer() {
   if (this->state == BC127_INCOMING_CALL) {
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) 
-                       + " ANSWER");
+    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " ANSWER");
     ESP_LOGI(TAG, "Answering call");
     this->set_state(BC127_CALL_IN_COURSE);
   } else {
@@ -236,8 +231,7 @@ void BC127Component::call_answer() {
 
 void BC127Component::call_reject() {
   if (this->state == BC127_INCOMING_CALL || this->state == BC127_CALL_BLOCKED) {
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) 
-                       + " REJECT");
+    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " REJECT");
     ESP_LOGI(TAG, "Rejecting call");
     this->set_state(BC127_CONNECTED);
   } else {
@@ -246,12 +240,16 @@ void BC127Component::call_reject() {
 }
 
 void BC127Component::call_end() {
-  if (this->state == BC127_CALL_IN_COURSE || this->state == BC127_CALL_OUTGOING) {
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) 
-                       + " END");
+  // -----------------------------------------
+  //  Approach #2: handle all possible states.
+  // -----------------------------------------
+  if (this->state == BC127_INCOMING_CALL ||
+      this->state == BC127_CALL_IN_COURSE ||
+      this->state == BC127_CALL_OUTGOING) {
+    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " END");
     ESP_LOGI(TAG, "Ending call");
 
-    // Fire on_ended_call callbacks
+    // Trigger on_ended_call
     this->add_on_ended_call_callback([this]() {
       ESP_LOGD(TAG, "ADD ON ENDED CALL CALLBACK");
     });
@@ -286,7 +284,7 @@ std::vector<std::string> BC127Component::get_contacts() {
 void BC127Component::send_command(const std::string &command) {
   ESP_LOGD(TAG, "Sending command: %s", command.c_str());
   this->write_str(command.c_str()); // Enviar comando por UART
-  this->write_str("\r");            // Retorno de carro
+  this->write_str("\r");            // AÃ±adir retorno de carro
 }
 
 void BC127Component::add_on_connected_callback(std::function<void()> &&trigger_function) {
@@ -303,7 +301,7 @@ void BC127Component::add_on_ended_call_callback(std::function<void()> &&trigger_
 
 void BC127Component::dump_config() {
   ESP_LOGCONFIG(TAG, "BC127 module:");
-  // Additional logging if needed
+  // Additional config logs if needed
   ESP_LOGCONFIG(TAG, "  Configured for UART communication with BC127");
 }
 
@@ -340,9 +338,6 @@ void BC127Component::set_state(int state) {
   }
 }
 
-// -------------------------------------------------------------------
-// Here is the definition for set_locked(bool locked).
-// -------------------------------------------------------------------
 void BC127Component::set_locked(bool locked) {
   this->locked_ = locked;
   ESP_LOGI(TAG, "bc127 locked_ set to: %s", locked ? "true" : "false");
