@@ -7,8 +7,11 @@ namespace bc127 {
 
 static const char *const TAG = "bc127";
 
+// --------------------
+// Constructor
+// --------------------
 BC127Component::BC127Component() {
-  // Constructor vacío o inicialización si es necesario
+  // Any constructor logic if needed
 }
 
 void BC127Component::setup() {
@@ -25,19 +28,18 @@ void BC127Component::setup() {
 }
 
 void BC127Component::loop() {
-  // Verifica si hay datos disponibles en la UART
+  // Check if data is available on UART
   if (this->available()) {
     String received_data = "";
 
-    // Lee los datos de la UART
     while (this->available()) {
       char c = this->read();
       received_data += c;
-      // Si detectamos el carácter de fin de línea, procesamos el comando
+      // If we detect CR, process the command
       if (c == '\r') {
         ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
         this->process_data(received_data);
-        received_data = ""; // Reinicia para el próximo mensaje
+        received_data = "";
       }
     }
   }
@@ -55,6 +57,7 @@ void BC127Component::loop() {
     return;
   }
 
+  // Example "one-time" logic
   if (this->onetime == 0) {
     this->set_onetime(1);
     ESP_LOGD(TAG, "LOOP one time");
@@ -83,12 +86,15 @@ void BC127Component::process_data(const String &data) {
     int second_space = data.indexOf(' ', first_space + 1);
     int third_space = data.indexOf(' ', second_space + 1);
     ESP_LOGD(TAG, "Spaces: %d, %d, %d", first_space, second_space, third_space);
+
     if (first_space != -1 && second_space != -1 && third_space != -1) {
       String var1 = data.substring(first_space + 1, second_space); // "13"
       String var2 = data.substring(second_space + 1, third_space); // "HFP"
       String var3 = data.substring(third_space + 1);               // "0CC6FD08CCAF"
+
       ESP_LOGD(TAG, "Parsed values: var1=%s, var2=%s, var3=%s",
                var1.c_str(), var2.c_str(), var3.c_str());
+
       if (var2.startsWith("HFP")) {
         this->hfp_connection_id = var1;
         this->ble_phone_address = var3;
@@ -115,10 +121,9 @@ void BC127Component::process_data(const String &data) {
       ESP_LOGI(TAG, "ID: %s", id.c_str());
       ESP_LOGI(TAG, "Phone Number: %s", phone_number.c_str());
 
-      // Only block calls if device is locked
-      bool device_is_locked = this->locked_;  
+      // If locked => block calls not in contact list
+      bool device_is_locked = this->locked_;
       if (device_is_locked) {
-        // If locked => block calls not in contact list
         if (this->phoneContactManager.find_contact_by_number(phone_number.c_str()) == nullptr) {
           this->set_state(BC127_CALL_BLOCKED);
           ESP_LOGI(TAG, "Call rejected: number not in contact list and device locked");
@@ -126,16 +131,16 @@ void BC127Component::process_data(const String &data) {
           return;
         }
       }
-      // If unlocked => do NOT block any number
 
+      // If unlocked => allow any number
       this->set_state(BC127_INCOMING_CALL);
 
-      // If contact is in the list, store the name:phone in callerId
+      // If contact is in the list, store name:phone in callerId
       PhoneContact *c = this->phoneContactManager.find_contact_by_number(phone_number.c_str());
       if (c != nullptr) {
-        this->callerId = c->to_string();
+        this->callerId = c->to_string();  // "Name:Number"
       } else {
-        // Not in list (and presumably unlocked) => store phone as "Unknown"
+        // Not in list => "Unknown:123"
         this->callerId = std::string("Unknown:") + phone_number.c_str();
       }
 
@@ -159,15 +164,18 @@ void BC127Component::process_data(const String &data) {
     int second_space = data.indexOf(' ', first_space + 1);
     int third_space = data.indexOf(' ', second_space + 1);
     ESP_LOGD(TAG, "Spaces: %d, %d, %d", first_space, second_space, third_space);
+
     if (first_space != -1 && second_space != -1 && third_space != -1) {
-      String var1 = data.substring(first_space + 1, second_space); 
+      String var1 = data.substring(first_space + 1, second_space);
       String var2 = data.substring(second_space + 1, third_space);
       String var3 = data.substring(third_space + 1);
+
       ESP_LOGD(TAG, "Parsed values: var1=%s, var2=%s, var3=%s",
                var1.c_str(), var2.c_str(), var3.c_str());
+
       if (var2.startsWith("HFP")) {
-        this->hfp_connection_id = "";
-        this->ble_phone_address = "";
+        this->hfp_connection_id.clear();
+        this->ble_phone_address.clear();
         ESP_LOGI(TAG, "HFP connection id cleared");
         ESP_LOGI(TAG, "BLE phone address cleared");
         this->set_state(BC127_READY);
@@ -187,30 +195,38 @@ void BC127Component::process_data(const String &data) {
     return;
   }
 
+  // CALL_OUTGOING
   if (data.startsWith("CALL_OUTGOING")) {
     ESP_LOGI(TAG, "Parsed CALL_OUTGOING command");
     this->set_state(BC127_CALL_OUTGOING);
     return;
   }
 
+  // Unknown
   ESP_LOGW(TAG, "Unknown command received: %s", data.c_str());
 }
 
 void BC127Component::call_dial(const char *phone_number) {
+  // Only dial if we're connected
   if (this->state == BC127_CONNECTED) {
+    // If contact not in the list, skip
     if (this->phoneContactManager.find_contact_by_number(phone_number) == nullptr) {
       ESP_LOGI(TAG, "Not possible to call this phone number because it is not in the contact list");
       return;
     }
     this->callerId = this->phoneContactManager.find_contact_by_number(phone_number)->get_number();
     ESP_LOGI(TAG, "Caller ID: %s", this->callerId.c_str());
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " OUTGOING " + phone_number);
+
+    // Send the call command
+    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) 
+                       + " OUTGOING " + phone_number);
   }
 }
 
 void BC127Component::call_answer() {
   if (this->state == BC127_INCOMING_CALL) {
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " ANSWER");
+    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) 
+                       + " ANSWER");
     ESP_LOGI(TAG, "Answering call");
     this->set_state(BC127_CALL_IN_COURSE);
   } else {
@@ -219,8 +235,9 @@ void BC127Component::call_answer() {
 }
 
 void BC127Component::call_reject() {
-  if ((this->state == BC127_INCOMING_CALL) || (this->state == BC127_CALL_BLOCKED)) {
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " REJECT");
+  if (this->state == BC127_INCOMING_CALL || this->state == BC127_CALL_BLOCKED) {
+    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) 
+                       + " REJECT");
     ESP_LOGI(TAG, "Rejecting call");
     this->set_state(BC127_CONNECTED);
   } else {
@@ -229,17 +246,21 @@ void BC127Component::call_reject() {
 }
 
 void BC127Component::call_end() {
-  if (this->state == BC127_CALL_IN_COURSE || (this->state == BC127_CALL_OUTGOING)) {
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " END");
+  if (this->state == BC127_CALL_IN_COURSE || this->state == BC127_CALL_OUTGOING) {
+    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) 
+                       + " END");
     ESP_LOGI(TAG, "Ending call");
+
+    // Fire on_ended_call callbacks
     this->add_on_ended_call_callback([this]() {
       ESP_LOGD(TAG, "ADD ON ENDED CALL CALLBACK");
     });
     auto &callbacks = on_ended_call_callbacks;
     callbacks.call();
+
     this->set_state(BC127_CONNECTED);
   } else {
-    ESP_LOGW(TAG, "No incoming call to answer");
+    ESP_LOGW(TAG, "No call to end right now");
   }
 }
 
@@ -254,21 +275,18 @@ void BC127Component::remove_phone_contact(const char *name, const char *number) 
 }
 
 std::vector<std::string> BC127Component::get_contacts() {
-  if (!this->phoneContactManager.get_contacts().empty()) {
-    const std::vector<PhoneContact> &contacts = this->phoneContactManager.get_contacts();
-    std::vector<std::string> contacts_str;
-    for (const auto &contact : contacts) {
-      contacts_str.push_back(contact.to_string());
-    }
-    return contacts_str;
+  const auto &contacts = this->phoneContactManager.get_contacts();
+  std::vector<std::string> contacts_str;
+  for (const auto &contact : contacts) {
+    contacts_str.push_back(contact.to_string());  // e.g. "Name:Number"
   }
-  return {};
+  return contacts_str;
 }
 
 void BC127Component::send_command(const std::string &command) {
   ESP_LOGD(TAG, "Sending command: %s", command.c_str());
-  this->write_str(command.c_str()); // Enviar el comando por UART
-  this->write_str("\r");            // Añadir retorno de carro si es necesario
+  this->write_str(command.c_str()); // Enviar comando por UART
+  this->write_str("\r");            // Retorno de carro
 }
 
 void BC127Component::add_on_connected_callback(std::function<void()> &&trigger_function) {
@@ -285,8 +303,7 @@ void BC127Component::add_on_ended_call_callback(std::function<void()> &&trigger_
 
 void BC127Component::dump_config() {
   ESP_LOGCONFIG(TAG, "BC127 module:");
-  // Puedes agregar cualquier configuración que quieras mostrar aquí
-  // Ejemplo:
+  // Additional logging if needed
   ESP_LOGCONFIG(TAG, "  Configured for UART communication with BC127");
 }
 
@@ -318,19 +335,20 @@ void BC127Component::set_state(int state) {
       ESP_LOGI(TAG, "Setting state: Outgoing call in course");
       break;
     default:
-      ESP_LOGI(TAG, "Setting state: Unknown state");
+      ESP_LOGI(TAG, "Setting state: Unknown");
       break;
   }
 }
 
-// ------------------------------------------------
-// NEW: Implementation of set_locked(bool)
-// ------------------------------------------------
+// -------------------------------------------------------------------
+// Here is the definition for set_locked(bool locked).
+// -------------------------------------------------------------------
 void BC127Component::set_locked(bool locked) {
   this->locked_ = locked;
   ESP_LOGI(TAG, "bc127 locked_ set to: %s", locked ? "true" : "false");
 }
 
+// Global pointer
 BC127Component *controller = nullptr;
 
 }  // namespace bc127
