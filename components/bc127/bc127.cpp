@@ -241,7 +241,7 @@ void BC127Component::call_end() {
       || this->state == BC127_CALL_BLOCKED)
   {
     // Attempt "CALL X END" if we have an HFP ID
-    if (!this->hfp_connection_id.empty()) {
+    if (!this->hfp_connection_id.isEmpty()) {
       this->send_command(std::string("CALL ") 
                          + std::string(this->hfp_connection_id.c_str()) 
                          + " END");
