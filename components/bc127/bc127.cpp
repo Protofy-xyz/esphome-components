@@ -136,8 +136,8 @@ void BC127Component::process_data(const String &data) {
       if (c != nullptr) {
         this->callerId = c->to_string();
       } else {
-        // Not in list but we're unlocked => store phone
-        this->callerId = phone_number.c_str();
+        // Not in list but we're unlocked => store phone as "Unknown"
+        this->callerId = std::string("Unknown:") + phone_number.c_str();
       }
 
       ESP_LOGI(TAG, "Caller ID: %s", this->callerId.c_str());
@@ -167,8 +167,8 @@ void BC127Component::process_data(const String &data) {
       ESP_LOGD(TAG, "Parsed values: var1=%s, var2=%s, var3=%s",
                var1.c_str(), var2.c_str(), var3.c_str());
       if (var2.startsWith("HFP")) {
-        this->hfp_connection_id.clear();
-        this->ble_phone_address.clear();
+        this->hfp_connection_id = "";
+        this->ble_phone_address = "";
         ESP_LOGI(TAG, "HFP connection id cleared");
         ESP_LOGI(TAG, "BLE phone address cleared");
         this->set_state(BC127_READY);
@@ -229,36 +229,18 @@ void BC127Component::call_reject() {
   }
 }
 
-//
-// ADJUSTMENT: handle ended call for all relevant states
-// including INCOMING_CALL & CALL_BLOCKED
-//
 void BC127Component::call_end() {
-  // If we see CALL_END in any call-related state, do the ended-call flow
-  if (this->state == BC127_CALL_IN_COURSE 
-      || this->state == BC127_CALL_OUTGOING 
-      || this->state == BC127_INCOMING_CALL 
-      || this->state == BC127_CALL_BLOCKED)
-  {
-    // Attempt "CALL X END" if we have an HFP ID
-    if (!this->hfp_connection_id.isEmpty()) {
-      this->send_command(std::string("CALL ") 
-                         + std::string(this->hfp_connection_id.c_str()) 
-                         + " END");
-      ESP_LOGI(TAG, "Ending call via BC127");
-    }
-    // Trigger the on_ended_call callbacks
+  if (this->state == BC127_CALL_IN_COURSE || (this->state == BC127_CALL_OUTGOING)) {
+    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " END");
+    ESP_LOGI(TAG, "Ending call");
     this->add_on_ended_call_callback([this]() {
       ESP_LOGD(TAG, "ADD ON ENDED CALL CALLBACK");
     });
     auto &callbacks = on_ended_call_callbacks;
     callbacks.call();
-
-    // Return to CONNECTED state
     this->set_state(BC127_CONNECTED);
   } else {
-    // If we're not in one of those call states
-    ESP_LOGW(TAG, "No active call to end (state=%d)", this->state);
+    ESP_LOGW(TAG, "No incoming call to answer");
   }
 }
 
