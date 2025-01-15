@@ -22,43 +22,51 @@ namespace bc127 {
 
 class BC127Component : public Component, public uart::UARTDevice {
  public:
+  // Some example member data (just as before)
   std::vector<uint8_t> bytes = {'a', 'b', 'c'};
   std::string callerId;
 
   BC127Component();
   virtual ~BC127Component() {}
 
+  // Standard overrides
   void setup() override;
   void loop() override;
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::DATA; }
 
+  // Callbacks
   void add_on_connected_callback(std::function<void()> &&trigger_function);
   void add_on_call_callback(std::function<void()> &&trigger_function);
   void add_on_ended_call_callback(std::function<void()> &&trigger_function);
 
+  // Telephony methods
   void call_dial(const char *phone_number);
   void call_answer();
   void call_reject();
   void call_end();
 
+  // Contact list management
   void add_phone_contact(const char *name, const char *number);
   void remove_phone_contact(const char *name, const char *number);
   std::vector<std::string> get_contacts();
 
+  // One-time logic
   void set_onetime(int val) { this->onetime = val; }
   int get_onetime() { return this->onetime; }
 
-  // ------------------------------------------------
-  // NEW: Provide a setter for 'locked_'
-  // ------------------------------------------------
-  void set_locked(bool locked) { this->locked_ = locked; }
+  // ------------------------------------------------------------------
+  // Declaration ONLY (no inline body!). We'll define in bc127.cpp.
+  // ------------------------------------------------------------------
+  void set_locked(bool locked);
 
  protected:
   int onetime;
   int state = 0;
+
   String ble_phone_address = "";
   String hfp_connection_id = "";
+
   void process_data(const String &data);
   void send_command(const std::string &command);
   void set_state(int state);
@@ -67,14 +75,14 @@ class BC127Component : public Component, public uart::UARTDevice {
   CallbackManager<void()> on_call_callbacks;
   CallbackManager<void()> on_ended_call_callbacks;
 
+  // Manage phone contacts
   PhoneContactManager phoneContactManager;
 
-  // ------------------------------------------------
-  // Track locked/unlocked internally
-  // ------------------------------------------------
+  // Internal locked/unlocked
   bool locked_{false};
 };
 
+// Expose the global pointer if needed
 extern BC127Component *controller;
 
 }  // namespace bc127
