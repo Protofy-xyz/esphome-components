@@ -55,10 +55,15 @@ class BC127Component : public Component, public uart::UARTDevice {
   void set_onetime(int val) { this->onetime = val; }
   int get_onetime() { return this->onetime; }
 
-  // ------------------------------------------------------------------
-  // Declaration ONLY (no inline body!). We'll define in bc127.cpp.
-  // ------------------------------------------------------------------
+  // Locking
   void set_locked(bool locked);
+
+  // ------------------------------------------------------------------
+  // New helper to check if BC127 is in the "connected" state
+  // ------------------------------------------------------------------
+  bool is_connected() const {
+    return (this->state == BC127_CONNECTED);
+  }
 
  protected:
   int onetime;
