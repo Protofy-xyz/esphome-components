@@ -77,6 +77,30 @@ void DS3231Component::write_time() {
   this->write_rtc_();
 }
 
+void DS3231Component::set_time(uint16_t year, uint16_t month, uint16_t day_of_month, uint16_t day_of_week, uint16_t hour, uint16_t minute, uint16_t second) {
+  //auto now = time::RealTimeClock::utcnow();
+  //if (!now.is_valid()) {
+  //  ESP_LOGE(TAG, "Invalid system time, not syncing to RTC.");
+  //  return;
+  //}
+  ds3231_.reg.year = (year - 2000) % 10;
+  ds3231_.reg.year_10 = (year - 2000) / 10 % 10;
+  ds3231_.reg.month = month % 10;
+  ds3231_.reg.month_10 = month / 10;
+  ds3231_.reg.day = day_of_month % 10;
+  ds3231_.reg.day_10 = day_of_month / 10;
+  ds3231_.reg.weekday = day_of_week;
+  ds3231_.reg.hour = hour % 10;
+  ds3231_.reg.hour_10 = hour / 10;
+  ds3231_.reg.minute = minute % 10;
+  ds3231_.reg.minute_10 = minute / 10;
+  ds3231_.reg.second = second % 10;
+  ds3231_.reg.second_10 = second / 10;
+  ds3231_.reg.ch = false;
+
+  this->write_rtc_();
+}
+
 bool DS3231Component::read_rtc_() {
   if (!this->read_bytes(0, this->ds3231_.raw, sizeof(this->ds3231_.raw))) {
     ESP_LOGE(TAG, "Can't read I2C data.");
