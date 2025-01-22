@@ -37,7 +37,7 @@ void DS3231Component::read_time() {
     ESP_LOGW(TAG, "RTC halted, not syncing to system clock.");
     return;
   }
-  time::ESPTime rtc_time{.second = uint8_t(ds3231_.reg.second + 10 * ds3231_.reg.second_10),
+  ESPTime rtc_time{.second = uint8_t(ds3231_.reg.second + 10 * ds3231_.reg.second_10),
                          .minute = uint8_t(ds3231_.reg.minute + 10u * ds3231_.reg.minute_10),
                          .hour = uint8_t(ds3231_.reg.hour + 10u * ds3231_.reg.hour_10),
                          .day_of_week = uint8_t(ds3231_.reg.weekday),
