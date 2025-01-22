@@ -15,6 +15,7 @@ class DS3231Component : public time::RealTimeClock, public i2c::I2CDevice {
   float get_setup_priority() const override;
   void read_time();
   void write_time();
+  void set_time(uint16_t year, uint16_t month, uint16_t day_of_month, uint16_t day_of_week, uint16_t hour, uint16_t minute, uint16_t second);
 
  protected:
   bool read_rtc_();
