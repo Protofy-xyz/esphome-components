@@ -7,9 +7,40 @@ namespace bc127 {
 
 static const char *const TAG = "bc127";
 
+BC127Component *controller = nullptr;
+
 BC127Component::BC127Component() {
-  // Any constructor logic if needed
 }
+
+
+void BC127Component::call_notify_incoming_call() {
+  this->send_command("TONE TE 120 TI 0 V 64 D 20 N C4 L 8 N E4 L 8 N G4 L 8");
+}
+
+void BC127Component::start_call_ring() {
+  this->ringing_ = true;
+}
+
+void BC127Component::stop_call_ring() {
+  this->ringing_ = false;
+}
+
+void BC127Component::volume_up() {
+  if (!this->hfp_connection_id.empty()) {
+    this->send_command("VOLUME " + this->hfp_connection_id + " UP");
+  } else {
+    ESP_LOGW(TAG, "No HFP connection ID to send volume up");
+  }
+}
+
+void BC127Component::volume_down() {
+  if (!this->hfp_connection_id.empty()) {
+    this->send_command("VOLUME " + this->hfp_connection_id + " DOWN");
+  } else {
+    ESP_LOGW(TAG, "No HFP connection ID to send volume down");
+  }
+}
+
 
 void BC127Component::setup() {
   this->phoneContactManager = PhoneContactManager();
@@ -25,14 +56,12 @@ void BC127Component::setup() {
 }
 
 void BC127Component::loop() {
-  // Check if data is available on the UART
   if (this->available()) {
     String received_data = "";
 
     while (this->available()) {
       char c = this->read();
       received_data += c;
-      // If we detect CR, process the command
       if (c == '\r') {
         ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
         this->process_data(received_data);
@@ -65,6 +94,14 @@ void BC127Component::loop() {
     std::vector<uint8_t> bytes = {'a', 'b'};
     callbacks.call();
   }
+
+  static uint32_t last_ring_millis = 0;
+  if (this->state == BC127_INCOMING_CALL && this->ringing_) {
+    if (millis() - last_ring_millis > 2000) {
+      last_ring_millis = millis();
+      this->call_notify_incoming_call();
+    }
+  }
 }
 
 void BC127Component::process_data(const String &data) {
@@ -75,7 +112,6 @@ void BC127Component::process_data(const String &data) {
     return;
   }
 
-  // OPEN_OK 13 HFP 0CC6FD08CCAF
   if (data.startsWith("OPEN_OK")) {
     ESP_LOGD(TAG, "OPEN_OK command received");
 
@@ -93,8 +129,8 @@ void BC127Component::process_data(const String &data) {
                var1.c_str(), var2.c_str(), var3.c_str());
 
       if (var2.startsWith("HFP")) {
-        this->hfp_connection_id = var1;
-        this->ble_phone_address = var3;
+        this->hfp_connection_id = std::string(var1.c_str()); 
+        this->ble_phone_address = std::string(var3.c_str());  
         ESP_LOGI(TAG, "HFP connection id: %s", this->hfp_connection_id.c_str());
         ESP_LOGI(TAG, "BLE phone address: %s", this->ble_phone_address.c_str());
         this->set_state(BC127_CONNECTED);
@@ -105,7 +141,6 @@ void BC127Component::process_data(const String &data) {
     return;
   }
 
-  // CALLER_NUMBER 13 000000000
   if (data.startsWith("CALLER_NUMBER")) {
     int first_space = data.indexOf(' ');
     int second_space = data.indexOf(' ', first_space + 1);
@@ -118,7 +153,6 @@ void BC127Component::process_data(const String &data) {
       ESP_LOGI(TAG, "ID: %s", id.c_str());
       ESP_LOGI(TAG, "Phone Number: %s", phone_number.c_str());
 
-      // If locked => block calls not in contact list
       bool device_is_locked = this->locked_;
       if (device_is_locked) {
         if (this->phoneContactManager.find_contact_by_number(phone_number.c_str()) == nullptr) {
@@ -129,10 +163,10 @@ void BC127Component::process_data(const String &data) {
         }
       }
 
-      // If unlocked => allow any number
       this->set_state(BC127_INCOMING_CALL);
 
-      // If contact is in the list, store "Name:Number" in callerId
+      this->start_call_ring();
+
       PhoneContact *c = this->phoneContactManager.find_contact_by_number(phone_number.c_str());
       if (c != nullptr) {
         this->callerId = c->to_string();
@@ -152,7 +186,6 @@ void BC127Component::process_data(const String &data) {
     return;
   }
 
-  // CLOSE_OK 13 HFP 0CC6FD08CCAF
   if (data.startsWith("CLOSE_OK")) {
     ESP_LOGD(TAG, "CLOSE_OK command received");
 
@@ -162,9 +195,9 @@ void BC127Component::process_data(const String &data) {
     ESP_LOGD(TAG, "Spaces: %d, %d, %d", first_space, second_space, third_space);
 
     if (first_space != -1 && second_space != -1 && third_space != -1) {
-      String var1 = data.substring(first_space + 1, second_space);
-      String var2 = data.substring(second_space + 1, third_space);
-      String var3 = data.substring(third_space + 1);
+      String var1 = data.substring(first_space + 1, second_space); // "13"
+      String var2 = data.substring(second_space + 1, third_space); // "HFP"
+      String var3 = data.substring(third_space + 1);               // "0CC6FD08CCAF"
 
       ESP_LOGD(TAG, "Parsed values: var1=%s, var2=%s, var3=%s",
                var1.c_str(), var2.c_str(), var3.c_str());
@@ -214,15 +247,16 @@ void BC127Component::call_dial(const char *phone_number) {
     ESP_LOGI(TAG, "Caller ID: %s", this->callerId.c_str());
 
     // Send the call command
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str())
-                       + " OUTGOING " + phone_number);
+    this->send_command(std::string("CALL ") + this->hfp_connection_id + " OUTGOING " + phone_number);
   }
 }
 
 void BC127Component::call_answer() {
   if (this->state == BC127_INCOMING_CALL) {
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " ANSWER");
+    this->send_command(std::string("CALL ") + this->hfp_connection_id + " ANSWER");
     ESP_LOGI(TAG, "Answering call");
+    // Stop ringing
+    this->stop_call_ring();
     this->set_state(BC127_CALL_IN_COURSE);
   } else {
     ESP_LOGW(TAG, "No incoming call to answer");
@@ -231,8 +265,10 @@ void BC127Component::call_answer() {
 
 void BC127Component::call_reject() {
   if (this->state == BC127_INCOMING_CALL || this->state == BC127_CALL_BLOCKED) {
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " REJECT");
+    this->send_command(std::string("CALL ") + this->hfp_connection_id + " REJECT");
     ESP_LOGI(TAG, "Rejecting call");
+    // Stop ringing
+    this->stop_call_ring();
     this->set_state(BC127_CONNECTED);
   } else {
     ESP_LOGW(TAG, "No incoming call to reject");
@@ -240,13 +276,10 @@ void BC127Component::call_reject() {
 }
 
 void BC127Component::call_end() {
-  // -----------------------------------------
-  //  Approach #2: handle all possible states.
-  // -----------------------------------------
   if (this->state == BC127_INCOMING_CALL ||
       this->state == BC127_CALL_IN_COURSE ||
       this->state == BC127_CALL_OUTGOING) {
-    this->send_command(std::string("CALL ") + std::string(this->hfp_connection_id.c_str()) + " END");
+    this->send_command(std::string("CALL ") + this->hfp_connection_id + " END");
     ESP_LOGI(TAG, "Ending call");
 
     // Trigger on_ended_call
@@ -256,6 +289,8 @@ void BC127Component::call_end() {
     auto &callbacks = on_ended_call_callbacks;
     callbacks.call();
 
+    // Stop ringing if it was still incoming
+    this->stop_call_ring();
     this->set_state(BC127_CONNECTED);
   } else {
     ESP_LOGW(TAG, "No call to end right now");
@@ -283,8 +318,8 @@ std::vector<std::string> BC127Component::get_contacts() {
 
 void BC127Component::send_command(const std::string &command) {
   ESP_LOGD(TAG, "Sending command: %s", command.c_str());
-  this->write_str(command.c_str()); // Enviar comando por UART
-  this->write_str("\r");            // AÃ±adir retorno de carro
+  this->write_str(command.c_str()); // Send command over UART
+  this->write_str("\r");            // Add carriage return
 }
 
 void BC127Component::add_on_connected_callback(std::function<void()> &&trigger_function) {
@@ -301,7 +336,6 @@ void BC127Component::add_on_ended_call_callback(std::function<void()> &&trigger_
 
 void BC127Component::dump_config() {
   ESP_LOGCONFIG(TAG, "BC127 module:");
-  // Additional config logs if needed
   ESP_LOGCONFIG(TAG, "  Configured for UART communication with BC127");
 }
 
@@ -342,9 +376,6 @@ void BC127Component::set_locked(bool locked) {
   this->locked_ = locked;
   ESP_LOGI(TAG, "bc127 locked_ set to: %s", locked ? "true" : "false");
 }
-
-// Global pointer
-BC127Component *controller = nullptr;
 
 }  // namespace bc127
 }  // namespace esphome
