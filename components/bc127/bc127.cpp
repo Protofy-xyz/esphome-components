@@ -14,7 +14,7 @@ BC127Component::BC127Component() {
 
 
 void BC127Component::call_notify_incoming_call() {
-  this->send_command("TONE TE 120 TI 0 V 64 D 20 N C4 L 8 N E4 L 8 N G4 L 8");
+  this->send_command("TONE TE 120 TI 0 V 255 D 20 N C4 L 8 N E4 L 8 N G4 L 8");
 }
 
 void BC127Component::start_call_ring() {
