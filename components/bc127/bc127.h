@@ -7,7 +7,7 @@
 #include <ArduinoJson.h>
 #include "automation.h"
 #include "phoneContactManager.h"
-#include <string>  // Add this include
+#include <string>  // Ensure this is included
 
 #define BC127_NOT_READY 0
 #define BC127_READY 1
@@ -23,46 +23,55 @@ namespace bc127 {
 
 class BC127Component : public Component, public uart::UARTDevice {
  public:
+  // Member data
   std::vector<uint8_t> bytes = {'a', 'b', 'c'};
   std::string callerId;
 
   BC127Component();
   virtual ~BC127Component() {}
 
+  // Standard overrides
   void setup() override;
   void loop() override;
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::DATA; }
 
+  // Callbacks
   void add_on_connected_callback(std::function<void()> &&trigger_function);
   void add_on_call_callback(std::function<void()> &&trigger_function);
   void add_on_ended_call_callback(std::function<void()> &&trigger_function);
 
+  // Telephony methods
   void call_dial(const char *phone_number);
   void call_answer();
   void call_reject();
   void call_end();
 
+  // Contact list management
   void add_phone_contact(const char *name, const char *number);
   void remove_phone_contact(const char *name, const char *number);
   std::vector<std::string> get_contacts();
 
+  // One-time logic
   void set_onetime(int val) { this->onetime = val; }
   int get_onetime() { return this->onetime; }
 
+  // Locking
   void set_locked(bool locked);
 
+  // Check if BC127 is in "connected" state
   bool is_connected() const {
     return (this->state == BC127_CONNECTED);
   }
 
+  // Ring tone control
   void call_notify_incoming_call();  // Sends TONE command once
   void start_call_ring();           // Flag to periodically re-trigger ring
   void stop_call_ring();            // Stop re-triggering
 
   // Volume control
-  void volume_up();                 
-  void volume_down();               
+  void volume_up();                 // VOLUME <linkID> UP
+  void volume_down();               // VOLUME <linkID> DOWN
 
  protected:
   int onetime;
@@ -85,6 +94,7 @@ class BC127Component : public Component, public uart::UARTDevice {
   // Internal locked/unlocked
   bool locked_{false};
 
+  // Ringing flag
   bool ringing_{false};
 };
 

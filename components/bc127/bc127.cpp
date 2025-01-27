@@ -12,8 +12,8 @@ BC127Component *controller = nullptr;
 BC127Component::BC127Component() {
 }
 
-
 void BC127Component::call_notify_incoming_call() {
+  // Maximum volume with slight decay for better audibility
   this->send_command("TONE TE 120 TI 0 V 255 D 20 N C4 L 8 N E4 L 8 N G4 L 8");
 }
 
@@ -40,7 +40,6 @@ void BC127Component::volume_down() {
     ESP_LOGW(TAG, "No HFP connection ID to send volume down");
   }
 }
-
 
 void BC127Component::setup() {
   this->phoneContactManager = PhoneContactManager();
@@ -95,6 +94,7 @@ void BC127Component::loop() {
     callbacks.call();
   }
 
+  // Periodically re-play ring while incoming call and ringing is active
   static uint32_t last_ring_millis = 0;
   if (this->state == BC127_INCOMING_CALL && this->ringing_) {
     if (millis() - last_ring_millis > 2000) {
@@ -105,13 +105,21 @@ void BC127Component::loop() {
 }
 
 void BC127Component::process_data(const String &data) {
-  // Ready
+  // Handle 'Ready' state
   if (data.startsWith("Ready")) {
     ESP_LOGI(TAG, "Ready");
     this->set_state(BC127_READY);
     return;
   }
 
+  // Handle 'OK' acknowledgment
+  if (data.startsWith("OK")) {
+    ESP_LOGD(TAG, "Received OK from BC127");
+    // Optionally, track which command was acknowledged
+    return;
+  }
+
+  // Handle 'OPEN_OK' command
   if (data.startsWith("OPEN_OK")) {
     ESP_LOGD(TAG, "OPEN_OK command received");
 
@@ -121,9 +129,9 @@ void BC127Component::process_data(const String &data) {
     ESP_LOGD(TAG, "Spaces: %d, %d, %d", first_space, second_space, third_space);
 
     if (first_space != -1 && second_space != -1 && third_space != -1) {
-      String var1 = data.substring(first_space + 1, second_space); // "13"
-      String var2 = data.substring(second_space + 1, third_space); // "HFP"
-      String var3 = data.substring(third_space + 1);               // "0CC6FD08CCAF"
+      String var1 = data.substring(first_space + 1, second_space); // e.g., "13"
+      String var2 = data.substring(second_space + 1, third_space); // e.g., "HFP"
+      String var3 = data.substring(third_space + 1);               // e.g., "0CC6FD08CCAF"
 
       ESP_LOGD(TAG, "Parsed values: var1=%s, var2=%s, var3=%s",
                var1.c_str(), var2.c_str(), var3.c_str());
@@ -141,6 +149,7 @@ void BC127Component::process_data(const String &data) {
     return;
   }
 
+  // Handle 'CALLER_NUMBER' command
   if (data.startsWith("CALLER_NUMBER")) {
     int first_space = data.indexOf(' ');
     int second_space = data.indexOf(' ', first_space + 1);
@@ -154,19 +163,27 @@ void BC127Component::process_data(const String &data) {
       ESP_LOGI(TAG, "Phone Number: %s", phone_number.c_str());
 
       bool device_is_locked = this->locked_;
+      bool is_whitelisted = (this->phoneContactManager.find_contact_by_number(phone_number.c_str()) != nullptr);
+
       if (device_is_locked) {
-        if (this->phoneContactManager.find_contact_by_number(phone_number.c_str()) == nullptr) {
+        if (!is_whitelisted) {
           this->set_state(BC127_CALL_BLOCKED);
           ESP_LOGI(TAG, "Call rejected: number not in contact list and device locked");
           this->call_reject();
           return;
+        } else {
+          this->set_state(BC127_INCOMING_CALL);
+          this->start_call_ring();
+          ESP_LOGI(TAG, "Incoming call from whitelisted number: %s", phone_number.c_str());
         }
+      } else {
+        // Device is unlocked; do not ring
+        this->set_state(BC127_INCOMING_CALL);
+        ESP_LOGI(TAG, "Incoming call while unlocked from: %s", phone_number.c_str());
+        // Optionally, you can choose to automatically answer or handle differently
       }
 
-      this->set_state(BC127_INCOMING_CALL);
-
-      this->start_call_ring();
-
+      // Set callerId
       PhoneContact *c = this->phoneContactManager.find_contact_by_number(phone_number.c_str());
       if (c != nullptr) {
         this->callerId = c->to_string();
@@ -186,6 +203,7 @@ void BC127Component::process_data(const String &data) {
     return;
   }
 
+  // Handle 'CLOSE_OK' command
   if (data.startsWith("CLOSE_OK")) {
     ESP_LOGD(TAG, "CLOSE_OK command received");
 
@@ -195,9 +213,9 @@ void BC127Component::process_data(const String &data) {
     ESP_LOGD(TAG, "Spaces: %d, %d, %d", first_space, second_space, third_space);
 
     if (first_space != -1 && second_space != -1 && third_space != -1) {
-      String var1 = data.substring(first_space + 1, second_space); // "13"
-      String var2 = data.substring(second_space + 1, third_space); // "HFP"
-      String var3 = data.substring(third_space + 1);               // "0CC6FD08CCAF"
+      String var1 = data.substring(first_space + 1, second_space); // e.g., "13"
+      String var2 = data.substring(second_space + 1, third_space); // e.g., "HFP"
+      String var3 = data.substring(third_space + 1);               // e.g., "0CC6FD08CCAF"
 
       ESP_LOGD(TAG, "Parsed values: var1=%s, var2=%s, var3=%s",
                var1.c_str(), var2.c_str(), var3.c_str());
@@ -215,7 +233,7 @@ void BC127Component::process_data(const String &data) {
     return;
   }
 
-  // CALL_END
+  // Handle 'CALL_END' command
   if (data.startsWith("CALL_END")) {
     ESP_LOGI(TAG, "Parsed CALL_END command");
     this->call_end();
@@ -224,14 +242,14 @@ void BC127Component::process_data(const String &data) {
     return;
   }
 
-  // CALL_OUTGOING
+  // Handle 'CALL_OUTGOING' command
   if (data.startsWith("CALL_OUTGOING")) {
     ESP_LOGI(TAG, "Parsed CALL_OUTGOING command");
     this->set_state(BC127_CALL_OUTGOING);
     return;
   }
 
-  // Unknown
+  // Unknown command
   ESP_LOGW(TAG, "Unknown command received: %s", data.c_str());
 }
 
