@@ -56,8 +56,10 @@ class BC127Component : public Component, public uart::UARTDevice {
   void set_onetime(int val) { this->onetime = val; }
   int get_onetime() { return this->onetime; }
 
-  // Locking
-  void set_locked(bool locked);
+
+
+  void set_whitelist_enabled(bool enabled) { this->whitelist_enabled_ = enabled; }
+  void set_ringing_enabled(bool enabled) { this->ringing_enabled_ = enabled; }
 
   // Check if BC127 is in "connected" state
   bool is_connected() const {
@@ -76,6 +78,8 @@ class BC127Component : public Component, public uart::UARTDevice {
  protected:
   int onetime;
   int state = 0;
+  int whitelist_enabled_ = true;
+  int ringing_enabled_ = true;
 
   std::string ble_phone_address = "";
   std::string hfp_connection_id = "";
@@ -90,9 +94,6 @@ class BC127Component : public Component, public uart::UARTDevice {
 
   // Manage phone contacts
   PhoneContactManager phoneContactManager;
-
-  // Internal locked/unlocked
-  bool locked_{false};
 
   // Ringing flag
   bool ringing_{false};

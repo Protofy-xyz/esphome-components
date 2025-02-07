@@ -162,26 +162,22 @@ void BC127Component::process_data(const String &data) {
       ESP_LOGI(TAG, "ID: %s", id.c_str());
       ESP_LOGI(TAG, "Phone Number: %s", phone_number.c_str());
 
-      bool device_is_locked = this->locked_;
+    
       bool is_whitelisted = (this->phoneContactManager.find_contact_by_number(phone_number.c_str()) != nullptr);
 
-      if (device_is_locked) {
-        if (!is_whitelisted) {
+     
+        if (this->whitelist_enabled_ && !is_whitelisted) {
           this->set_state(BC127_CALL_BLOCKED);
           ESP_LOGI(TAG, "Call rejected: number not in contact list and device locked");
           this->call_reject();
           return;
         } else {
           this->set_state(BC127_INCOMING_CALL);
-          this->start_call_ring();
-          ESP_LOGI(TAG, "Incoming call from whitelisted number: %s", phone_number.c_str());
+          if(this->ringing_enabled_ == true){
+            this->start_call_ring();
+          }
+          ESP_LOGI(TAG, "Incoming call from number: %s", phone_number.c_str());
         }
-      } else {
-        // Device is unlocked; do not ring
-        this->set_state(BC127_INCOMING_CALL);
-        ESP_LOGI(TAG, "Incoming call while unlocked from: %s", phone_number.c_str());
-        // Optionally, you can choose to automatically answer or handle differently
-      }
 
       // Set callerId
       PhoneContact *c = this->phoneContactManager.find_contact_by_number(phone_number.c_str());
@@ -390,10 +386,6 @@ void BC127Component::set_state(int state) {
   }
 }
 
-void BC127Component::set_locked(bool locked) {
-  this->locked_ = locked;
-  ESP_LOGI(TAG, "bc127 locked_ set to: %s", locked ? "true" : "false");
-}
 
 }  // namespace bc127
 }  // namespace esphome
