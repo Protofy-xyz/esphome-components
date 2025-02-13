@@ -321,6 +321,11 @@ void BC127Component::remove_phone_contact(const char *name, const char *number) 
   ESP_LOGI(TAG, "Removing contact: name: %s, number: %s", name, number);
 }
 
+void BC127Component::remove_all_phone_contacts() {
+  this->phoneContactManager.clear_contacts();
+  ESP_LOGI(TAG, "All contacts removed");
+}
+
 std::vector<std::string> BC127Component::get_contacts() {
   const auto &contacts = this->phoneContactManager.get_contacts();
   std::vector<std::string> contacts_str;
