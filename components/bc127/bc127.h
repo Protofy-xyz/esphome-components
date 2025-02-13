@@ -50,6 +50,7 @@ class BC127Component : public Component, public uart::UARTDevice {
   // Contact list management
   void add_phone_contact(const char *name, const char *number);
   void remove_phone_contact(const char *name, const char *number);
+  void remove_all_phone_contacts();
   std::vector<std::string> get_contacts();
 
   // One-time logic
