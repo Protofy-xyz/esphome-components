@@ -35,14 +35,29 @@ const std::vector<PhoneContact>& PhoneContactManager::get_contacts() const {
   return contacts_;
 }
 
-PhoneContact* PhoneContactManager::find_contact_by_number(const std::string &number) {
-  for (auto &contact : contacts_) {
-    if (contact.get_number() == number) {
-      return &contact;  // Retorna un puntero al contacto encontrado
+std::string normalizePhone(const std::string &phone) {
+    std::string normalized;
+    for (char c : phone) {
+        if (std::isdigit(static_cast<unsigned char>(c))) {
+            normalized.push_back(c);
+        }
     }
-  }
-  return nullptr;  // Retorna nullptr si no encuentra el número
+    return normalized;
 }
+
+PhoneContact* PhoneContactManager::find_contact_by_number(const std::string &number) {
+    std::string searchDigits = normalizePhone(number);
+    
+    for (auto &contact : contacts_) {
+        std::string contactDigits = normalizePhone(contact.get_number());
+        if (contactDigits.find(searchDigits) != std::string::npos ||
+            searchDigits.find(contactDigits) != std::string::npos) {
+            return &contact;
+        }
+    }
+    return nullptr;
+}
+
 PhoneContact* PhoneContactManager::find_contact_by_name(const std::string &name) {
   for (auto &contact : contacts_) {
     if (contact.get_name() == name) {
