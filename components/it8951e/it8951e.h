@@ -133,6 +133,7 @@ shown in Figure 1. The use of a white image in the transition from 4-bit to
 
   void setup() override;
   void update() override;
+  void update_crazy();
   void update_slow();
   void dump_config() override;
 
