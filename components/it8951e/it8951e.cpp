@@ -337,6 +337,7 @@ void IT8951ESensor::update() {
 
 void IT8951ESensor::update_crazy() {
     if (this->is_ready()) {
+        this->do_update_();
         this->write_display();
     }
 }
