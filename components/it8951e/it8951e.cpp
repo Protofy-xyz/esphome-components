@@ -364,12 +364,15 @@ void IT8951ESensor::write_display() {
     this->max_x = 720-1;
     this->max_y = 539;
 
-    // Calcular el ancho y alto de la región a actualizar
-    uint16_t update_width = (this->max_x - this->min_x + 1);
-    uint16_t update_height = (this->max_y - this->min_y + 1);
-    uint32_t update_size = update_width * update_height;  // Tamaño total en bytes
+    this->min_x &= ~0x1;
+    this->max_x = (this->max_x + 1) & ~0x1;
+
+    uint16_t update_width = this->max_x - this->min_x;
+    uint16_t update_height = this->max_y - this->min_y;
+    uint32_t update_size = (update_width >> 1) * update_height;  // Dividimos width entre 2 porque cada byte almacena 2 píxeles.
+
     ESP_LOGI(TAG, "Update region size: width=%d, height=%d, total=%d bytes", update_width, update_height, update_size);
-    // Crear un buffer temporal solo para la región modificada
+
     ExternalRAMAllocator<uint8_t> buffer_allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
     uint8_t *cropped_buffer = buffer_allocator.allocate(update_size);
     
@@ -378,11 +381,10 @@ void IT8951ESensor::write_display() {
         return;
     }
 
-    // Copiar la región recortada del buffer original al buffer temporal
     for (uint16_t y = 0; y < update_height; y++) {
-        uint32_t src_index = (this->min_y + y) * this->get_width_internal() + this->min_x;
-        uint32_t dst_index = y * update_width;
-        memcpy(&cropped_buffer[dst_index], &this->buffer_[src_index], update_width);
+        uint32_t src_index = (this->min_y + y) * (this->get_width_internal() >> 1) + (this->min_x >> 1);
+        uint32_t dst_index = y * (update_width >> 1);
+        memcpy(&cropped_buffer[dst_index], &this->buffer_[src_index], update_width >> 1);
     }
 
     ESP_LOGI(TAG, "write_buffer_to_display: x=%d, y=%d, width=%d, height=%d", this->min_x, this->min_y, update_width, update_height);
