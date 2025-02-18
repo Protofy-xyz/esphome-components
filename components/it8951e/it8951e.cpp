@@ -8,6 +8,7 @@ namespace esphome {
 namespace it8951e {
 
 static const char *TAG = "it8951e.display";
+uint8_t *previous_buffer_{nullptr};
 
 void IT8951ESensor::write_two_byte16(uint16_t type, uint16_t cmd) {
     this->wait_busy();
@@ -280,6 +281,42 @@ void IT8951ESensor::write_buffer_to_display(uint16_t x, uint16_t y, uint16_t w,
     this->write_command(IT8951_TCON_LD_IMG_END);
 }
 
+void IT8951ESensor::calculate_update_region() {
+    // Reset de coordenadas
+    this->min_x = this->get_width_internal();
+    this->min_y = this->get_height_internal();
+    this->max_x = 0;
+    this->max_y = 0;
+
+    // Iterar sobre el buffer buscando diferencias
+    for (int y = 0; y < this->get_height_internal(); y++) {
+        for (int x = 0; x < this->get_width_internal(); x++) {
+            uint16_t _bytewidth = this->get_width_internal() >> 1;
+            int index = y * _bytewidth + (x >> 1);
+
+            uint8_t new_value = this->buffer_[index];
+            uint8_t old_value = this->previous_buffer_[index];
+
+            if (new_value != old_value) {  // Si el píxel ha cambiado, actualizar límites
+                if (x < this->min_x) this->min_x = x;
+                if (y < this->min_y) this->min_y = y;
+                if (x > this->max_x) this->max_x = x;
+                if (y > this->max_y) this->max_y = y;
+            }
+        }
+    }
+    ESP_LOGI(TAG, "Update area detected: x[%d - %d], y[%d - %d]", this->min_x, this->max_x, this->min_y, this->max_y);
+
+    // Si no se detectaron cambios, hacer un refresh completo
+    if (this->min_x > this->max_x || this->min_y > this->max_y) {
+        ESP_LOGI(TAG,"No changes detected, doing full refresh");
+        this->min_x = 0;
+        this->min_y = 0;
+        this->max_x = this->get_width_internal();
+        this->max_y = this->get_height_internal();
+    }
+}
+
 void IT8951ESensor::write_display() {
     this->write_command(IT8951_TCON_SYS_RUN);
     ESP_LOGI(TAG, "write_display: %d %d %d %d ", this->min_x, this->min_y, this->max_x, this->max_y);
@@ -289,8 +326,15 @@ void IT8951ESensor::write_display() {
     this->max_y = 0;
     this->min_x = 960;
     this->min_y = 540;
+    //copy this->buffer_ values to previous_buffer_ using memcpy
+    previous_buffer_ = (uint8_t *)malloc(this->get_buffer_length_());
+    memcpy(previous_buffer_, this->buffer_, this->get_buffer_length_());
+    ESP_LOGI(TAG, "Copied buffer to past_buffer_");
     this->write_command(IT8951_TCON_SLEEP);
+    calculate_update_region();
 }
+
+
 
 void IT8951ESensor::write_display_slow() {
     this->write_command(IT8951_TCON_SYS_RUN);
