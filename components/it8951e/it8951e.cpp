@@ -362,7 +362,7 @@ void IT8951ESensor::write_display() {
     this->min_x = 0;
     this->min_y = 0;
     this->max_x = 480-1;
-    this->max_y = 270-1;
+    this->max_y = 539;
     this->write_buffer_to_display(this->min_x, this->min_y, this->max_x, this->max_y, this->buffer_);
     this->update_area(this->min_x, this->min_y, this->max_x, this->max_y, update_mode_e::UPDATE_MODE_DU4);   // 2 level
     this->max_x = 0;
