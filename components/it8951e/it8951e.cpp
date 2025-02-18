@@ -333,7 +333,23 @@ void IT8951ESensor::calculate_update_region() {
     }
 }
 
+//create a function that logs all buffer content as a string the input parameters must be uint8_t *buff, uint32_t buff_size
+//this function will be used to log the buffer content for debugging purposes
+void IT8951ESensor::log_buffer(uint8_t *buff, uint32_t buff_size) {
+    //create a string to store the buffer content
+    std::string buffer_content = "";
+    //iterate over the buffer and append each byte to the string
+    for (uint32_t i = 0; i < buff_size; i++) {
+        buffer_content += std::to_string(buff[i]);
+        buffer_content += " ";
+    }
+    //log the buffer content
+    ESP_LOGI(TAG, "Buffer content: %s", buffer_content.c_str());
+}
+
 void IT8951ESensor::write_display() {
+    this->log_buffer(this->buffer_, this->get_buffer_length_());
+    this->log_buffer(this->previous_buffer_, this->get_buffer_length_());
     calculate_update_region();
     this->write_command(IT8951_TCON_SYS_RUN);
     ESP_LOGI(TAG, "write_display: %d %d %d %d ", this->min_x, this->min_y, this->max_x, this->max_y);
@@ -346,7 +362,7 @@ void IT8951ESensor::write_display() {
     //copy this->buffer_ values to previous_buffer_ using memcpy
     
     memcpy(this->previous_buffer_, this->buffer_, this->get_buffer_length_());
-    ESP_LOGI(TAG, "Copied buffer to past_buffer_");
+    ESP_LOGI(TAG, "Copied buffer to previous_buffer_");
     this->write_command(IT8951_TCON_SLEEP);
 }
 
