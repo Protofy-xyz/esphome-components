@@ -1,8 +1,8 @@
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
+#include ""
 #include "it8951e.h"
 #include "it8951.h"
-#include "esphome/core/application.h"
 #include "esphome/core/gpio.h"
 
 namespace esphome {
@@ -288,6 +288,7 @@ void IT8951ESensor::write_buffer_to_display(uint16_t x, uint16_t y, uint16_t w,
 
         if (x % 1000 == 0) {  
             App.feed_wdt();
+            delay(10);
             // vTaskDelay(1);  // Pequeño delay para evitar bloqueo del sistema
         }
     }
