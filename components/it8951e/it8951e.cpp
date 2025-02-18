@@ -300,27 +300,25 @@ void IT8951ESensor::calculate_update_region() {
     int xmax = 0;
     int ymax = 0;
 
-    // Iterar sobre el buffer buscando diferencias
-    for (int y = 0; y < this->get_height_internal(); y++) {
-        for (int x = 0; x < this->get_width_internal(); x++) {
-            uint16_t _bytewidth = this->get_width_internal() >> 1;
-            int index = y * _bytewidth + (x >> 1);
+    //Log get_width_internal() and get_height_internal()
+    ESP_LOGI(TAG, "get_width_internal(): %d", this->get_width_internal());
+    ESP_LOGI(TAG, "get_height_internal(): %d", this->get_height_internal());
 
-            uint8_t new_value = this->buffer_[index];
-            uint8_t old_value = this->previous_buffer_[index];
+    uint32_t buffer_size = this->get_buffer_length_();
 
-            if (new_value != old_value) {  // Si el píxel ha cambiado, actualizar límites
-                // if (x < this->min_x) this->min_x = x;
-                // if (y < this->min_y) this->min_y = y;
-                // if (x > this->max_x) this->max_x = x;
-                // if (y > this->max_y) this->max_y = y;
-                if (x < this->min_x) xmin = x;
-                if (y < this->min_y) ymin = y;
-                if (x > this->max_x) xmax = x;
-                if (y > this->max_y) ymax = y;
-            }
+    for (uint32_t index = 0; index < buffer_size; index++) {
+        if (this->buffer_[index] != this->previous_buffer_[index]) {  // Si el píxel cambió
+            int x = index % this->get_width_internal();
+            int y = index / this->get_width_internal();
+
+            // Actualizar límites de la región modificada
+            if (x < xmin) xmin = x;
+            if (y < ymin) ymin = y;
+            if (x > xmax) xmax = x;
+            if (y > ymax) ymax = y;
         }
     }
+
     ESP_LOGI(TAG, "Update area detected: x[%d - %d], y[%d - %d]", xmin, xmax, ymin, ymax);
 
     // Si no se detectaron cambios, hacer un refresh completo
