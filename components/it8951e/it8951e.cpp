@@ -295,7 +295,7 @@ void IT8951ESensor::calculate_update_region() {
             int index = y * _bytewidth + (x >> 1);
 
             uint8_t new_value = this->buffer_[index];
-            uint8_t old_value = this->previous_buffer_[index];
+            uint8_t old_value = previous_buffer_[index];
 
             if (new_value != old_value) {  // Si el píxel ha cambiado, actualizar límites
                 if (x < this->min_x) this->min_x = x;
