@@ -1,4 +1,5 @@
 #include "esphome/core/log.h"
+#include "esphome/core/application.h"
 #include "it8951e.h"
 #include "it8951.h"
 #include "esphome/core/application.h"
@@ -284,6 +285,7 @@ void IT8951ESensor::write_buffer_to_display(uint16_t x, uint16_t y, uint16_t w,
         this->write_byte16(word);
         // this->disable();
         pos += 2;
+        App.feed_wdt();
     }
 
     this->write_command(IT8951_TCON_LD_IMG_END);
