@@ -363,8 +363,30 @@ void IT8951ESensor::write_display() {
     this->min_y = 0;
     this->max_x = 720-1;
     this->max_y = 539;
+
+    // Calcular el ancho y alto de la región a actualizar
+    uint16_t update_width = this->max_x - this->min_x + 1;
+    uint16_t update_height = this->max_y - this->min_y + 1;
+    uint32_t update_size = update_width * update_height;  // Tamaño total en bytes
+
+    // Crear un buffer temporal solo para la región modificada
+    ExternalRAMAllocator<uint8_t> buffer_allocator(ExternalRAMAllocator<uint8_t>::ALLOW_FAILURE);
+    uint8_t *cropped_buffer = buffer_allocator.allocate(update_size);
+    
+    if (cropped_buffer == nullptr) {
+        ESP_LOGE(TAG, "Failed to allocate cropped buffer.");
+        return;
+    }
+
+    // Copiar la región recortada del buffer original al buffer temporal
+    for (uint16_t y = 0; y < update_height; y++) {
+        memcpy(&cropped_buffer[y * update_width], 
+               &this->buffer_[(this->min_y + y) * this->get_width_internal() + this->min_x], 
+               update_width);
+    }
+
     ESP_LOGI(TAG, "write_buffer_to_display: %d %d %d %d ", this->min_x, this->min_y, this->max_x, this->max_y);
-    this->write_buffer_to_display(this->min_x, this->min_y, this->max_x, this->max_y, this->buffer_);
+    this->write_buffer_to_display(this->min_x, this->min_y, this->max_x, this->max_y, cropped_buffer);
     ESP_LOGI(TAG, "update_area: %d %d %d %d ", this->min_x, this->min_y, this->max_x, this->max_y);
     this->update_area(this->min_x, this->min_y, this->max_x, this->max_y, update_mode_e::UPDATE_MODE_DU4);   // 2 level
     this->max_x = 0;
@@ -372,7 +394,7 @@ void IT8951ESensor::write_display() {
     this->min_x = 960;
     this->min_y = 540;
     //copy this->buffer_ values to previous_buffer_ using memcpy
-    
+    buffer_allocator.deallocate(cropped_buffer, update_size);
     memcpy(this->previous_buffer_, this->buffer_, this->get_buffer_length_());
     ESP_LOGI(TAG, "Copied buffer to previous_buffer_");
     this->write_command(IT8951_TCON_SLEEP);
