@@ -285,7 +285,11 @@ void IT8951ESensor::write_buffer_to_display(uint16_t x, uint16_t y, uint16_t w,
         this->write_byte16(word);
         // this->disable();
         pos += 2;
-        App.feed_wdt();
+
+        if (x % 1000 == 0) {  
+            App.feed_wdt();
+            // vTaskDelay(1);  // Pequeño delay para evitar bloqueo del sistema
+        }
     }
 
     this->write_command(IT8951_TCON_LD_IMG_END);
