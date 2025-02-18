@@ -361,7 +361,7 @@ void IT8951ESensor::write_display() {
     ESP_LOGI(TAG, "write_display: %d %d %d %d ", this->min_x, this->min_y, this->max_x, this->max_y);
     this->write_buffer_to_display(this->min_x, this->min_y, this->max_x, this->max_y, this->buffer_);
     // this->update_area(this->940, this->min_y, this->max_x, this->max_y, update_mode_e::UPDATE_MODE_DU4);   // 2 level
-    this->update_area(939, 529, this->max_x, this->max_y, update_mode_e::UPDATE_MODE_DU4);
+    this->update_area(939, 0, this->max_x, this->max_y, update_mode_e::UPDATE_MODE_DU4);
     this->max_x = 0;
     this->max_y = 0;
     this->min_x = 960;
