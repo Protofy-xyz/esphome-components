@@ -343,8 +343,8 @@ void IT8951ESensor::log_buffer(uint8_t *buff, uint32_t buff_size) {
     //create a string to store the buffer content
     std::string buffer_content = "";
     //iterate over the buffer and append each byte to the string
-    //for (uint32_t i = 0; i < buff_size; i++) {
-    for (uint32_t i = 0; i < 100; i++) {
+    for (uint32_t i = 0; i < buff_size; i++) {
+    // for (uint32_t i = 0; i < 100; i++) {
         buffer_content += std::to_string(buff[i]);
         buffer_content += " ";
     }
