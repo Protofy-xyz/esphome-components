@@ -1,6 +1,5 @@
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
-#include ""
 #include "it8951e.h"
 #include "it8951.h"
 #include "esphome/core/gpio.h"
