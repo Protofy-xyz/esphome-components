@@ -336,16 +336,23 @@ void IT8951ESensor::calculate_update_region() {
 //create a function that logs all buffer content as a string the input parameters must be uint8_t *buff, uint32_t buff_size
 //this function will be used to log the buffer content for debugging purposes
 void IT8951ESensor::log_buffer(uint8_t *buff, uint32_t buff_size) {
+    if(buff == nullptr) {
+        ESP_LOGE(TAG, "Buffer is null");
+        return;
+    }
     //create a string to store the buffer content
     std::string buffer_content = "";
     //iterate over the buffer and append each byte to the string
-    for (uint32_t i = 0; i < buff_size; i++) {
+    //for (uint32_t i = 0; i < buff_size; i++) {
+    for (uint32_t i = 0; i < 100; i++) {
         buffer_content += std::to_string(buff[i]);
         buffer_content += " ";
     }
     //log the buffer content
     ESP_LOGI(TAG, "Buffer content: %s", buffer_content.c_str());
 }
+
+
 
 void IT8951ESensor::write_display() {
     this->log_buffer(this->buffer_, this->get_buffer_length_());
