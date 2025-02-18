@@ -356,7 +356,7 @@ void IT8951ESensor::log_buffer(uint8_t *buff, uint32_t buff_size) {
 void IT8951ESensor::write_display() {
     this->log_buffer(this->buffer_, this->get_buffer_length_());
     this->log_buffer(this->previous_buffer_, this->get_buffer_length_());
-    this->calculate_update_region();
+    //this->calculate_update_region();
     this->write_command(IT8951_TCON_SYS_RUN);
     ESP_LOGI(TAG, "write_display: %d %d %d %d ", this->min_x, this->min_y, this->max_x, this->max_y);
     this->min_x = 0;
