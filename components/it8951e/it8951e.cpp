@@ -285,10 +285,9 @@ void IT8951ESensor::write_buffer_to_display(uint16_t x, uint16_t y, uint16_t w,
         // this->disable();
         pos += 2;
 
-        if (x % 1000 == 0) {  
-            App.feed_wdt();
-            delay(10);
-            // vTaskDelay(1);  // Pequeño delay para evitar bloqueo del sistema
+        if (x % 100 == 0) {  
+            this->disable();
+            this->enable();
         }
     }
 
