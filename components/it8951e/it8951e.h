@@ -171,7 +171,7 @@ shown in Figure 1. The use of a white image in the transition from 4-bit to
   uint32_t min_x = 960;
   uint32_t min_y = 540;
   uint16_t m_endian_type, m_pix_bpp;
-
+  uint8_t *previous_buffer_{nullptr};
 
   GPIOPin *reset_pin_{nullptr};
   GPIOPin *busy_pin_{nullptr};
