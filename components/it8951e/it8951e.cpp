@@ -271,7 +271,6 @@ void IT8951ESensor::write_buffer_to_display(uint16_t x, uint16_t y, uint16_t w,
 
     uint32_t pos = 0;
     uint16_t word = 0;
-    this->enable();
     for (uint32_t x = 0; x < ((w * h) >> 2); x++) {
         word = gram[pos] << 8 | gram[pos + 1];
 
@@ -279,16 +278,11 @@ void IT8951ESensor::write_buffer_to_display(uint16_t x, uint16_t y, uint16_t w,
             word = 0xFFFF - word;
         }
 
-        // this->enable();
+        this->enable();
         this->write_byte16(0);
         this->write_byte16(word);
-        // this->disable();
+        this->disable();
         pos += 2;
-
-        if ((x % 4) == 0) {  
-            this->disable();
-            this->enable();
-        }
     }
 
     this->write_command(IT8951_TCON_LD_IMG_END);
