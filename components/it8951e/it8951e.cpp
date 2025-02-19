@@ -289,6 +289,42 @@ void IT8951ESensor::write_buffer_to_display(uint16_t x, uint16_t y, uint16_t w,
     this->disable();
 }
 
+
+void IT8951ESensor::write_buffer_to_display_fast(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint8_t *gram) {
+    this->m_endian_type = IT8951_LDIMG_B_ENDIAN;
+    this->m_pix_bpp     = IT8951_4BPP;
+    if (x > this->get_width() || y > this->get_height()) {
+        ESP_LOGE(TAG, "Pos (%d, %d) out of bounds.", x, y);
+        return;
+    }
+
+    this->set_target_memory_addr(this->IT8951DevAll[this->model_].devInfo.usImgBufAddrL, this->IT8951DevAll[this->model_].devInfo.usImgBufAddrH);
+    this->set_area(x, y, w, h);
+
+    uint32_t pos = 0;
+    uint16_t word = 0;
+    this->enable();
+    for (uint32_t x = 0; x < ((w * h) >> 2); x++) {
+        word = gram[pos] << 8 | gram[pos + 1];
+
+        if (!this->reversed_) {
+            word = 0xFFFF - word;
+        }
+
+        //this->enable();
+        this->write_byte16(0);
+        this->write_byte16(word);
+        //this->disable();
+        pos += 2;
+        if((x % 10) == 0) {
+            App.feed_wdt();
+        }
+    }
+
+    this->write_command(IT8951_TCON_LD_IMG_END);
+    this->disable();
+}
+
 void IT8951ESensor::calculate_update_region() {
     // Reset de coordenadas
     // this->min_x = this->get_width_internal();
@@ -389,7 +425,7 @@ void IT8951ESensor::write_display() {
     }
 
     ESP_LOGI(TAG, "write_buffer_to_display: x=%d, y=%d, width=%d, height=%d", this->min_x, this->min_y, update_width, update_height);
-    this->write_buffer_to_display(this->min_x, this->min_y, update_width, update_height, cropped_buffer);
+    this->write_buffer_to_display_fast(this->min_x, this->min_y, update_width, update_height, cropped_buffer);
     
     ESP_LOGI(TAG, "update_area: x=%d, y=%d, width=%d, height=%d", this->min_x, this->min_y, update_width, update_height);
     this->update_area(this->min_x, this->min_y, update_width, update_height, update_mode_e::UPDATE_MODE_DU4);   // 2 level
