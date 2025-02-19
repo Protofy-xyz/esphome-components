@@ -317,8 +317,10 @@ void IT8951ESensor::write_buffer_to_display_fast(uint16_t x, uint16_t y, uint16_
         //this->disable();
         pos += 2;
         if((k % 10) == 0) {
+            this->disable();
             App.feed_wdt();
-            delay(1);
+            delay(1000);
+            this->enable();
         }
     }
 
