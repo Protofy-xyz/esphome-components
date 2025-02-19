@@ -318,6 +318,7 @@ void IT8951ESensor::write_buffer_to_display_fast(uint16_t x, uint16_t y, uint16_
         pos += 2;
         if((x % 10) == 0) {
             App.feed_wdt();
+            delay(1);
         }
     }
 
