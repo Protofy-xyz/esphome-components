@@ -303,7 +303,6 @@ void IT8951ESensor::write_buffer_to_display_fast(uint16_t x, uint16_t y, uint16_
 
     uint32_t pos = 0;
     uint16_t word = 0;
-    this->enable();
     for (uint32_t k = 0; k < ((w * h) >> 2); k++) {
         word = gram[pos] << 8 | gram[pos + 1];
 
@@ -311,17 +310,17 @@ void IT8951ESensor::write_buffer_to_display_fast(uint16_t x, uint16_t y, uint16_
             word = 0xFFFF - word;
         }
 
-        //this->enable();
+        this->enable();
         this->write_byte16(0);
         this->write_byte16(word);
-        //this->disable();
+        this->disable();
         pos += 2;
-        if((k % 10) == 0) {
-            this->disable();
-            App.feed_wdt();
-            delay(3);
-            this->enable();
-        }
+        // if((k % 10) == 0) {
+        //     this->disable();
+        //     App.feed_wdt();
+        //     delay(3);
+        //     this->enable();
+        // }
     }
 
     this->write_command(IT8951_TCON_LD_IMG_END);
@@ -399,10 +398,10 @@ void IT8951ESensor::write_display() {
     //this->calculate_update_region();
     this->write_command(IT8951_TCON_SYS_RUN);
     ESP_LOGI(TAG, "write_display: %d %d %d %d ", this->min_x, this->min_y, this->max_x, this->max_y);
-    this->min_x = 0;
-    this->min_y = 0;
+    this->min_x = 80;
+    this->min_y = 50;
     this->max_x = 720-1;
-    this->max_y = 539;
+    this->max_y = 539-50;
 
     this->min_x &= ~0x1;
     this->max_x = (this->max_x + 1) & ~0x1;
