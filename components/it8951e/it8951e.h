@@ -207,7 +207,6 @@ shown in Figure 1. The use of a white image in the transition from 4-bit to
   void calculate_update_region();
   void write_buffer_to_display_fast(uint16_t x, uint16_t y, uint16_t w,
     uint16_t h, const uint8_t *gram);
-void write_display();
   void write_buffer_to_display(uint16_t x, uint16_t y, uint16_t w,
                                 uint16_t h, const uint8_t *gram);
   void write_display();
