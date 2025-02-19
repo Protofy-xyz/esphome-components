@@ -304,7 +304,7 @@ void IT8951ESensor::write_buffer_to_display_fast(uint16_t x, uint16_t y, uint16_
     uint32_t pos = 0;
     uint16_t word = 0;
     this->enable();
-    for (uint32_t x = 0; x < ((w * h) >> 2); x++) {
+    for (uint32_t k = 0; k < ((w * h) >> 2); k++) {
         word = gram[pos] << 8 | gram[pos + 1];
 
         if (!this->reversed_) {
@@ -316,7 +316,7 @@ void IT8951ESensor::write_buffer_to_display_fast(uint16_t x, uint16_t y, uint16_
         this->write_byte16(word);
         //this->disable();
         pos += 2;
-        if((x % 10) == 0) {
+        if((k % 10) == 0) {
             App.feed_wdt();
             delay(1);
         }
