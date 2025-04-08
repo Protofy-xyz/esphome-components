@@ -9,14 +9,20 @@ static const char *const TAG = "pca9632";
 void PCA9632Component::setup() {
   ESP_LOGCONFIG(TAG, "Setting up PCA9632...");
 
-  // MODE1: SLEEP=0 (bit 4), AI=1 (bit 5) → 0x20
-  write_register(0x00, 0x20);
+  // Intento inicial para verificar si está presente el dispositivo
+  uint8_t reg = 0x00;
+  if (this->write(&reg, 1) != i2c::ERROR_OK) {
+    ESP_LOGE(TAG, "PCA9632 I2C write failed. Device not responding.");
+    this->mark_failed();
+    return;
+  }
 
-  // MODE2: DMBLNK=1 (bit 5), OCH=0 (bit 3), INVRT=0 → 0x20
-  write_register(0x01, 0x20);
+  // Configuración normal
+  write_register(0x00, 0x20);  // MODE1: AI=1, SLEEP=0
+  write_register(0x01, 0x20);  // MODE2: DMBLNK=1
+  write_register(0x08, 0xAA);  // LEDOUT: PWM control
 
-  // LEDOUT: Default to PWM control
-  write_register(0x08, 0xAA);
+  ESP_LOGD(TAG, "PCA9632 initialization complete.");
 }
 
 void PCA9632Component::dump_config() {
