@@ -1,0 +1,94 @@
+esphome:
+  name: test-pca9632
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.arduino.memory_type: opi_opi
+    board_upload.maximum_ram_size: 524288
+    build_flags:
+      - '-DBOARD_HAS_PSRAM'
+      - '-DARDUINO_USB_CDC_ON_BOOT=1'
+      - '-mfix-esp32-psram-cache-issue'
+  on_boot:
+    then:
+      - delay: 5s
+      - logger.log:
+          level: DEBUG
+          format: "Turning off leds"
+      - pca9632.set_pwm:
+          id: mypca9632
+          channel: 0
+          value: 0
+      - pca9632.set_pwm:
+          id: mypca9632
+          channel: 1
+          value: 0
+      - pca9632.set_pwm:
+          id: mypca9632
+          channel: 2
+          value: 0
+      - delay: 10s
+      # - lambda: |-
+      #     id(mypca9632).set_current(128);  // Set all channels to 50% (only if using all white)
+      #     id(mypca9632).set_color(255, 0, 255);  // RB
+      #     id(mypca9632).set_group_control_mode(true);  // Use group mode (for blinking)
+      #     id(mypca9632).set_blinking(1000, 128);  // 1s period, 50% duty
+      - logger.log:
+          level: DEBUG
+          format: "Blinking leds"
+      - pca9632.set_current:
+          id: mypca9632
+          current: 3mA
+      - pca9632.set_color:
+          id: mypca9632
+          red: 255
+          green: 0
+          blue: 255
+          white: 0
+      - pca9632.set_group_control_mode:
+          id: mypca9632
+          mode: true
+      - pca9632.set_blinking:
+          id: mypca9632
+          period: 1000ms
+          duty_cycle: 50%
+      - delay: 10s
+      # - lambda: |-
+      #     // Apagar el modo blinking y dejar todos encendidos
+      #     id(mypca9632).set_group_control_mode(false);  // Volver a PWM normal
+      #     id(mypca9632).set_current(255);  // 100% brillo
+      - logger.log:
+          level: DEBUG
+          format: "Turning on leds"
+      - pca9632.set_group_control_mode:
+          id: mypca9632
+          mode: false
+      - pca9632.set_current:
+          id: mypca9632
+          current: 24mA
+
+      
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16Mb
+  framework:
+    type: esp-idf
+
+logger: {}
+external_components:
+  source: 
+    type: local
+    path: esphome-components/components/
+  refresh: 0s
+  components:
+    - pca9632
+
+i2c:
+  id: i2cbus
+  sda: 1
+  scl: 2
+  scan: true
+
+pca9632:
+    id: "mypca9632"
+    address: 0x60
