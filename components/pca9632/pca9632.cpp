@@ -46,10 +46,11 @@ void PCA9632Component::set_current(uint8_t value) {
   ESP_LOGD(TAG, "Set current to %d", value);
 }
 
-void PCA9632Component::set_color(uint8_t r, uint8_t g, uint8_t b) {
+void PCA9632Component::set_color(uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
   this->set_pwm(0, r);  // Red
   this->set_pwm(1, g);  // Green
-  this->set_pwm(2, b);  // Blue
+  this->set_pwm(2, b);  // Blue 
+  this->set_pwm(3, w);  // No white channel
   ESP_LOGD(TAG, "Set color to R:%d G:%d B:%d", r, g, b);
 }
 
