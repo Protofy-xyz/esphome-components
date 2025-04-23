@@ -164,8 +164,10 @@ void BC127Component::process_data(const String &data) {
 
     
       bool is_whitelisted = (this->phoneContactManager.find_contact_by_number(phone_number.c_str()) != nullptr);
+      
+      ESP_LOGD(TAG, "whitelist_enabled_: %d", this->whitelist_enabled_);
+      ESP_LOGD(TAG, "is_whitelisted: %d", is_whitelisted);
 
-     
         if (this->whitelist_enabled_ && !is_whitelisted) {
           this->set_state(BC127_CALL_BLOCKED);
           ESP_LOGI(TAG, "Call rejected: number not in contact list and device locked");
