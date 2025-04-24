@@ -11,8 +11,8 @@ esp32:
 
 
 wifi:
-  ssid: DEMOFY
-  password: PR0T0FY100
+  ssid: WIFI NAME
+  password: password
   power_save_mode: none
 
 mqtt:
@@ -108,7 +108,7 @@ bc127:
         // Cuando termines, libera la memoria para evitar fugas de memoria
         ESP_LOGD("test",  char_ptr);
         delete[] char_ptr;
-        id(my_bc127).add_phone_contact("ghofrane", "627118144");
+        id(my_bc127).add_phone_contact("contact name", "contact number");
 
   on_ended_call:
     logger.log: "executing action: on_call_ended"
