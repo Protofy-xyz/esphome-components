@@ -17,6 +17,7 @@ CONF_DEBUG_RECEIVED_MESSAGES = "debug_received_messages"
 mks42d_ns = cg.esphome_ns.namespace("mks42d")
 MKS42DComponent = mks42d_ns.class_("MKS42DComponent", cg.Component)
 SetTargetPositionAction = mks42d_ns.class_("SetTargetPositionAction", automation.Action)
+SendHomeAction = mks42d_ns.class_("SendHomeAction", automation.Action)
 
 CONFIG_SCHEMA = cv.ensure_list(cv.Schema({
     cv.Required(CONF_ID): cv.declare_id(MKS42DComponent),
@@ -43,7 +44,6 @@ async def to_code(config):
             cv.Required("acceleration"): cv.int_,
         })
 )
-
 async def set_target_position_action_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
     await cg.register_parented(var, config[CONF_ID])
@@ -53,4 +53,15 @@ async def set_target_position_action_to_code(config, action_id, template_arg, ar
     cg.add(var.set_target_position(target_position))
     cg.add(var.set_speed(speed))
     cg.add(var.set_acceleration(acceleration))
+    return var
+
+@automation.register_action(
+    "mks42d.send_home", SendHomeAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(MKS42DComponent)
+    })
+)
+async def send_home_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
     return var

@@ -18,8 +18,9 @@ class MKS42DComponent : public Component {
   void process_frame(const std::vector<uint8_t> &data);
   void set_debug_received_messages(bool debug) { this->debug_received_messages_ = debug; }
 
+  void send_raw(const std::vector<uint8_t> &data);
   void set_target_position(int32_t target_position, int speed, int acceleration);
-
+  void send_home();
 
  protected:
   uint8_t can_id_;
@@ -42,6 +43,15 @@ class SetTargetPositionAction : public Action<Ts...>, public Parented<MKS42DComp
                                        this->acceleration_.value(x...));
   }
 };
+//SendHomeAction
+template<typename... Ts>
+class SendHomeAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  void play(Ts... x) override {
+    this->parent_->send_home();
+  }
+};
+
 
 }  // namespace mks42d
 }  // namespace esphome

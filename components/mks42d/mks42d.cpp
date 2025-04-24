@@ -22,6 +22,17 @@ void MKS42DComponent::process_frame(const std::vector<uint8_t> &x) {
   }
 }
 
+void MKS42DComponent::send_raw(const std::vector<uint8_t> &data) {
+  if (this->debug_received_messages_) {
+    ESP_LOGD(TAG, "Sending CAN frame:");
+    for (size_t i = 0; i < data.size(); i++) {
+      ESP_LOGD(TAG, "  data[%d] = 0x%02X", i, data[i]);
+    }
+  }
+  if (this->canbus_ != nullptr)
+    this->canbus_->send_data(this->can_id_, false, data);
+}
+
 void MKS42DComponent::set_target_position(int32_t target_position, int speed, int acceleration) {
   std::vector<uint8_t> data;
   data.push_back(0xFE);  // Command ID
@@ -36,9 +47,15 @@ void MKS42DComponent::set_target_position(int32_t target_position, int speed, in
   for (auto b : data) crc += b;
   data.push_back(crc & 0xFF);
 
-  this->canbus_->send_data(this->can_id_, false, data);
+  send_raw(data);
 }
 
+void MKS42DComponent::send_home() {
+  std::vector<uint8_t> data = {0x91, 0x92};
+  uint8_t crc = 1;
+  for (auto b : data) crc += b;
+  data.push_back(crc & 0xFF);
+  send_raw(data);}
 
 }  // namespace mks42d
 }  // namespace esphome
