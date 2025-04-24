@@ -314,9 +314,19 @@ void BC127Component::call_end() {
 }
 
 void BC127Component::add_phone_contact(const char *name, const char *number) {
+  if (number == nullptr || strlen(number) == 0) {
+    ESP_LOGW(TAG, "Contact not added: empty number");
+    return;
+  }
+  if (name == nullptr || strlen(name) == 0) {
+    ESP_LOGW(TAG, "Contact not added: empty name");
+    return;
+  }
+
   this->phoneContactManager.add_contact(PhoneContact(name, number));
   ESP_LOGI(TAG, "Adding contact: name: %s, number: %s", name, number);
 }
+
 
 void BC127Component::remove_phone_contact(const char *name, const char *number) {
   this->phoneContactManager.remove_contact(PhoneContact(name, number));
