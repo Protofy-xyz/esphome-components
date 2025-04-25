@@ -104,7 +104,7 @@ mks42d:
 
 text_sensor:
   - platform: mks42d
-    id: motor1
+    mks42d_id: motor1
     step_state:
       name: "Motor1 Step State"
       id: motor1_step_state
