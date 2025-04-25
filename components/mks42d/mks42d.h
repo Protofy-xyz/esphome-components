@@ -44,6 +44,7 @@ class MKS42DComponent : public Component {
   void set_in2_state_text_sensor(text_sensor::TextSensor *s)   { this->in2_state_text_sensor_  = s; }
   void set_out1_state_text_sensor(text_sensor::TextSensor *s)  { this->out1_state_text_sensor_ = s; }
   void set_out2_state_text_sensor(text_sensor::TextSensor *s)  { this->out2_state_text_sensor_ = s; }
+  void set_stall_state_text_sensor(text_sensor::TextSensor *s) { this->stall_state_text_sensor_ = s; }
 
  protected:
   uint8_t can_id_;
@@ -58,6 +59,7 @@ class MKS42DComponent : public Component {
   text_sensor::TextSensor *in2_state_text_sensor_{nullptr};
   text_sensor::TextSensor *out1_state_text_sensor_{nullptr};
   text_sensor::TextSensor *out2_state_text_sensor_{nullptr};
+  text_sensor::TextSensor *stall_state_text_sensor_{nullptr};
 };
 
 //SetTargetPositionAction 

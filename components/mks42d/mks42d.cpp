@@ -14,6 +14,7 @@ void MKS42DComponent::loop() {
   if (now - this->last_io_millis_ >= this->throttle_) {
     this->last_io_millis_ = now;
     this->query_io_status();
+    this->query_stall();
   }
 }
 
@@ -65,6 +66,20 @@ void MKS42DComponent::process_frame(const std::vector<uint8_t> &x) {
       this->out1_state_text_sensor_->publish_state(out1 ? "ON" : "OFF");
     if (this->out2_state_text_sensor_)
       this->out2_state_text_sensor_->publish_state(out2 ? "ON" : "OFF");
+  }
+  if (x.size() >= 2 && x[0] == 0x3E) {
+    uint8_t stall_status = x[1];
+
+    std::string new_state;
+    if (stall_status == 1) {
+      new_state = "stalled";
+    } else {
+      new_state = "normal";
+    }
+
+    if (this->stall_state_text_sensor_ != nullptr) {
+      this->stall_state_text_sensor_->publish_state(new_state);
+    }
   }
 }
 

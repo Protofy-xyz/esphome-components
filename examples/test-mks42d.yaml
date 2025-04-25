@@ -123,3 +123,6 @@ text_sensor:
     out2_state:
       name: "Motor1 OUT2 State"
       id: motor1_out2_state
+    stall_state:
+      name: "Motor1 Stall State"
+      id: motor1_stall_state
