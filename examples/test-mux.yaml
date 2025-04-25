@@ -1,0 +1,58 @@
+esphome:
+  name: test-mux
+      
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 8Mb
+  framework:
+    type: arduino
+
+logger:
+  hardware_uart: UART0
+
+external_components:
+  source: 
+    type: local
+    path: ../components/
+  refresh: 0s
+  components:
+    - mux
+
+mux:
+  - id: my_mux
+    sel0: GPIO5
+    sel1: GPIO6
+    sel2: GPIO7
+    result: GPIO14
+    update_interval: 100ms
+
+binary_sensor:
+  - platform: gpio
+    id: d0
+    name: d0
+    pin:
+      mux: my_mux
+      number: 0
+      inverted: false
+  - platform: gpio
+    id: d1
+    name: d1
+    pin:
+      mux: my_mux
+      number: 1
+      inverted: false
+  - platform: gpio
+    id: d2
+    name: d2
+    pin:
+      mux: my_mux
+      number: 2
+      inverted: false
+  - platform: gpio
+    id: d3
+    name: d3
+    pin:
+      mux: my_mux
+      number: 3
+      inverted: false
