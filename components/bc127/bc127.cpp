@@ -283,6 +283,13 @@ void BC127Component::call_reject() {
   if (this->state == BC127_INCOMING_CALL || this->state == BC127_CALL_BLOCKED) {
     this->send_command(std::string("CALL ") + this->hfp_connection_id + " REJECT");
     ESP_LOGI(TAG, "Rejecting call");
+    // Trigger on_ended_call
+    this->add_on_ended_call_callback([this]() {
+      ESP_LOGD(TAG, "ADD ON ENDED CALL CALLBACK");
+    });
+    auto &callbacks = on_ended_call_callbacks;
+    callbacks.call();
+    
     // Stop ringing
     this->stop_call_ring();
     this->set_state(BC127_CONNECTED);
