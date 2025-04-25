@@ -6,7 +6,17 @@ namespace mks42d {
 
 static const char *const TAG = "mks42d";
 
-void MKS42DComponent::setup() {}
+void MKS42DComponent::setup() {
+  this->last_io_millis_ = millis();
+}
+void MKS42DComponent::loop() {
+  uint32_t now = millis();
+  if (now - this->last_io_millis_ >= this->throttle_) {
+    this->last_io_millis_ = now;
+    this->query_io_status();
+  }
+}
+
 
 void MKS42DComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "MKS42D Component:");
@@ -38,6 +48,23 @@ void MKS42DComponent::process_frame(const std::vector<uint8_t> &x) {
       uint8_t idx = x[1] < 3 ? x[1] : 0;
       this->home_state_text_sensor_->publish_state(HOMING_STATES[idx]);
     }
+  }
+  if (x.size() >= 3 && x[0] == 0x34) {
+    uint8_t status = x[1];
+    bool in1 = status & 0x01;
+    bool in2 = status & 0x02;
+    bool out1 = status & 0x04;
+    bool out2 = status & 0x08;
+
+    ESP_LOGD(TAG, "IO Status: IN1=%u IN2=%u OUT1=%u OUT2=%u", in1, in2, out1, out2);
+    if (this->in1_state_text_sensor_)
+      this->in1_state_text_sensor_->publish_state(in1 ? "ON" : "OFF");
+    if (this->in2_state_text_sensor_)
+      this->in2_state_text_sensor_->publish_state(in2 ? "ON" : "OFF");
+    if (this->out1_state_text_sensor_)
+      this->out1_state_text_sensor_->publish_state(out1 ? "ON" : "OFF");
+    if (this->out2_state_text_sensor_)
+      this->out2_state_text_sensor_->publish_state(out2 ? "ON" : "OFF");
   }
 }
 

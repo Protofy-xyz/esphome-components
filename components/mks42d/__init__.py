@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.const import CONF_ID
+from esphome.const import CONF_ID, CONF_THROTTLE
 from esphome.components import canbus
 from esphome import automation
 
@@ -36,7 +36,9 @@ CONFIG_SCHEMA = cv.ensure_list(cv.Schema({
     cv.Required(CONF_ID): cv.declare_id(MKS42DComponent),
     cv.Required(CONF_CANBUS_ID): cv.use_id(canbus.CanbusComponent),
     cv.Required(CONF_CAN_ID): cv.uint8_t,
-    cv.Optional(CONF_DEBUG_RECEIVED_MESSAGES, default=False): cv.boolean
+    cv.Optional(CONF_DEBUG_RECEIVED_MESSAGES, default=False): cv.boolean,
+    cv.Optional(CONF_THROTTLE, default="60s"): cv.positive_time_period_milliseconds,
+
 }).extend(cv.COMPONENT_SCHEMA))
 
 async def to_code(config):
@@ -47,6 +49,7 @@ async def to_code(config):
         cg.add(var.set_can_id(conf[CONF_CAN_ID]))
         cg.add(var.set_canbus_parent(await cg.get_variable(conf[CONF_CANBUS_ID])))
         cg.add(var.set_debug_received_messages(conf[CONF_DEBUG_RECEIVED_MESSAGES]))
+        cg.add(var.set_throttle(conf[CONF_THROTTLE]))
 
 @automation.register_action(
         "mks42d.set_target_position", SetTargetPositionAction, 

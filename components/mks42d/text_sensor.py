@@ -8,6 +8,10 @@ DEPENDENCIES = ['mks42d']
 
 CONF_STEP_STATE = 'step_state'
 CONF_HOME_STATE = 'home_state'
+CONF_IN1_STATE    = 'in1_state'
+CONF_IN2_STATE    = 'in2_state'
+CONF_OUT1_STATE   = 'out1_state'
+CONF_OUT2_STATE   = 'out2_state'
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(CONF_ID): cv.use_id(MKS42DComponent),
@@ -17,6 +21,10 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_HOME_STATE): text_sensor.text_sensor_schema(
         entity_category=ENTITY_CATEGORY_NONE,
     ),
+    cv.Optional(CONF_IN1_STATE):    text_sensor.text_sensor_schema(entity_category=ENTITY_CATEGORY_NONE),
+    cv.Optional(CONF_IN2_STATE):    text_sensor.text_sensor_schema(entity_category=ENTITY_CATEGORY_NONE),
+    cv.Optional(CONF_OUT1_STATE):   text_sensor.text_sensor_schema(entity_category=ENTITY_CATEGORY_NONE),
+    cv.Optional(CONF_OUT2_STATE):   text_sensor.text_sensor_schema(entity_category=ENTITY_CATEGORY_NONE),
 }).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
@@ -27,3 +35,15 @@ async def to_code(config):
     if CONF_HOME_STATE in config:
         sens = await text_sensor.new_text_sensor(config[CONF_HOME_STATE])
         cg.add(mks.set_home_state_text_sensor(sens))
+    if CONF_IN1_STATE in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_IN1_STATE])
+        cg.add(mks.set_in1_state_text_sensor(sens))
+    if CONF_IN2_STATE in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_IN2_STATE])
+        cg.add(mks.set_in2_state_text_sensor(sens))
+    if CONF_OUT1_STATE in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_OUT1_STATE])
+        cg.add(mks.set_out1_state_text_sensor(sens))
+    if CONF_OUT2_STATE in config:
+        sens = await text_sensor.new_text_sensor(config[CONF_OUT2_STATE])
+        cg.add(mks.set_out2_state_text_sensor(sens))

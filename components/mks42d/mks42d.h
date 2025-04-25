@@ -1,5 +1,7 @@
 #pragma once
 
+#include "esphome/core/hal.h"
+#include "esphome.h"
 #include "esphome/core/component.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/canbus/canbus.h"
@@ -14,6 +16,7 @@ class MKS42DComponent : public Component {
   void set_canbus_parent(canbus::Canbus *canbus) { this->canbus_ = canbus; }
 
   void setup() override;
+  void loop() override;
   void dump_config() override;
   void process_frame(const std::vector<uint8_t> &data);
   void set_debug_received_messages(bool debug) { this->debug_received_messages_ = debug; }
@@ -33,17 +36,28 @@ class MKS42DComponent : public Component {
   void set_mode(int mode);
   void set_home_params(bool hm_trig_level, const std::string &hm_dir, int hm_speed, bool end_limit, bool sensorless);
   void query_io_status();
+  void set_throttle(uint32_t ms) { this->throttle_ = ms; }
 
   void set_step_state_text_sensor(text_sensor::TextSensor *s) { this->step_state_text_sensor_ = s; }
   void set_home_state_text_sensor(text_sensor::TextSensor *s) { this->home_state_text_sensor_ = s; }
+  void set_in1_state_text_sensor(text_sensor::TextSensor *s)   { this->in1_state_text_sensor_  = s; }
+  void set_in2_state_text_sensor(text_sensor::TextSensor *s)   { this->in2_state_text_sensor_  = s; }
+  void set_out1_state_text_sensor(text_sensor::TextSensor *s)  { this->out1_state_text_sensor_ = s; }
+  void set_out2_state_text_sensor(text_sensor::TextSensor *s)  { this->out2_state_text_sensor_ = s; }
 
  protected:
   uint8_t can_id_;
   canbus::Canbus *canbus_{nullptr};
   bool debug_received_messages_{false};
+  uint32_t throttle_{60000};  // default 60s
+  uint32_t last_io_millis_{0};
+
   text_sensor::TextSensor *step_state_text_sensor_{nullptr};
   text_sensor::TextSensor *home_state_text_sensor_{nullptr};
-
+  text_sensor::TextSensor *in1_state_text_sensor_{nullptr};
+  text_sensor::TextSensor *in2_state_text_sensor_{nullptr};
+  text_sensor::TextSensor *out1_state_text_sensor_{nullptr};
+  text_sensor::TextSensor *out2_state_text_sensor_{nullptr};
 };
 
 //SetTargetPositionAction 

@@ -97,6 +97,7 @@ mks42d:
     can_bus_id: mycanbus
     can_id: 1
     debug_received_messages: false
+    throttle: 2s
   - id: motor2
     can_bus_id: mycanbus
     can_id: 2
@@ -110,3 +111,15 @@ text_sensor:
     home_state:
       name: "Motor1 Home State"
       id: motor1_home_state
+    in1_state:
+      name: "Motor1 IN1 State"
+      id: motor1_in1_state
+    in2_state:
+      name: "Motor1 IN2 State"
+      id: motor1_in2_state
+    out1_state:
+      name: "Motor1 OUT1 State"
+      id: motor1_out1_state
+    out2_state:
+      name: "Motor1 OUT2 State"
+      id: motor1_out2_state
