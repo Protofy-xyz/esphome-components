@@ -21,6 +21,18 @@ class MKS42DComponent : public Component {
   void send_raw(const std::vector<uint8_t> &data);
   void set_target_position(int32_t target_position, int speed, int acceleration);
   void send_home();
+  void enable_rotation(const std::string &state);
+  void send_limit_remap(const std::string &state);
+  void query_stall();
+  void unstall_command();
+  void set_no_limit_reverse(int degrees, int current_ma);
+  void set_direction(const std::string &dir);
+  void set_microstep(int microstep);
+  void set_hold_current(int percent);
+  void set_working_current(int ma);
+  void set_mode(int mode);
+  void set_home_params(bool hm_trig_level, const std::string &hm_dir, int hm_speed, bool end_limit, bool sensorless);
+  void query_io_status();
 
  protected:
   uint8_t can_id_;
@@ -49,6 +61,146 @@ class SendHomeAction : public Action<Ts...>, public Parented<MKS42DComponent> {
  public:
   void play(Ts... x) override {
     this->parent_->send_home();
+  }
+};
+
+// EnableRotationAction
+template<typename... Ts>
+class EnableRotationAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  TEMPLATABLE_VALUE(std::string, state)
+
+  void play(Ts... x) override {
+    this->parent_->enable_rotation(this->state_.value(x...));
+  }
+};
+
+// SendLimitRemapAction
+template<typename... Ts>
+class SendLimitRemapAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  TEMPLATABLE_VALUE(std::string, state)
+
+  void play(Ts... x) override {
+    this->parent_->send_limit_remap(this->state_.value(x...));
+  }
+};
+
+// QueryStallAction
+template<typename... Ts>
+class QueryStallAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  void play(Ts... x) override {
+    this->parent_->query_stall();
+  }
+};
+
+// UnstallCommandAction
+template<typename... Ts>
+class UnstallCommandAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  void play(Ts... x) override {
+    this->parent_->unstall_command();
+  }
+};
+
+// SetNoLimitReverseAction
+template<typename... Ts>
+class SetNoLimitReverseAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  TEMPLATABLE_VALUE(int, degrees)
+  TEMPLATABLE_VALUE(int, current_ma)
+
+  void play(Ts... x) override {
+    this->parent_->set_no_limit_reverse(
+      this->degrees_.value(x...),
+      this->current_ma_.value(x...)
+    );
+  }
+};
+
+// SetDirectionAction
+template<typename... Ts>
+class SetDirectionAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  TEMPLATABLE_VALUE(std::string, direction)
+
+  void play(Ts... x) override {
+    this->parent_->set_direction(this->direction_.value(x...));
+  }
+};
+
+// SetMicrostepAction
+template<typename... Ts>
+class SetMicrostepAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  TEMPLATABLE_VALUE(int, microstep)
+
+  void play(Ts... x) override {
+    this->parent_->set_microstep(this->microstep_.value(x...));
+  }
+};
+
+// SetHoldCurrentAction
+template<typename... Ts>
+class SetHoldCurrentAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  TEMPLATABLE_VALUE(int, percent)
+
+  void play(Ts... x) override {
+    this->parent_->set_hold_current(this->percent_.value(x...));
+  }
+};
+
+// SetWorkingCurrentAction
+template<typename... Ts>
+class SetWorkingCurrentAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  TEMPLATABLE_VALUE(int, ma)
+
+  void play(Ts... x) override {
+    this->parent_->set_working_current(this->ma_.value(x...));
+  }
+};
+
+// SetModeAction
+template<typename... Ts>
+class SetModeAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  TEMPLATABLE_VALUE(int, mode)
+
+  void play(Ts... x) override {
+    this->parent_->set_mode(this->mode_.value(x...));
+  }
+};
+
+// SetHomeParamsAction
+template<typename... Ts>
+class SetHomeParamsAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  TEMPLATABLE_VALUE(bool, hm_trig_level)
+  TEMPLATABLE_VALUE(std::string, hm_dir)
+  TEMPLATABLE_VALUE(int, hm_speed)
+  TEMPLATABLE_VALUE(bool, end_limit)
+  TEMPLATABLE_VALUE(bool, sensorless_homing)
+
+  void play(Ts... x) override {
+    this->parent_->set_home_params(
+      this->hm_trig_level_.value(x...),
+      this->hm_dir_.value(x...),
+      this->hm_speed_.value(x...),
+      this->end_limit_.value(x...),
+      this->sensorless_homing_.value(x...)
+    );
+  }
+};
+
+// QueryIOStatusAction
+template<typename... Ts>
+class QueryIOStatusAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  void play(Ts... x) override {
+    this->parent_->query_io_status();
   }
 };
 

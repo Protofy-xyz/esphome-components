@@ -1,0 +1,97 @@
+esphome:
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.arduino.memory_type: opi_opi
+    board_upload.maximum_ram_size: 524288
+    build_flags:
+      - '-DBOARD_HAS_PSRAM'
+      - '-DARDUINO_USB_CDC_ON_BOOT=1'
+      - '-mfix-esp32-psram-cache-issue'
+  name: test-mks42d
+  on_boot:
+    priority: -100
+    then:
+      - delay: 2s
+      # motor config
+      - mks42d.send_limit_remap:
+          id: motor1
+          state: "OFF"    #Dont remap limit switches
+      - mks42d.set_no_limit_reverse:
+          id: motor1
+          degrees: 0         # degrees to reverse when hitting limit
+          current_ma: 400    # current in mA
+      - mks42d.set_home_params:
+          id: motor1
+          hm_trig_level: false
+          hm_dir: "CCW"
+          hm_speed: 400
+          end_limit: true
+          sensorless_homing: true
+      - mks42d.set_direction:
+          id: motor1
+          dir: "CW"    # or "CCW"
+      - mks42d.set_microstep:
+          id: motor1
+          microstep: 8    # Can be 1, 2, 4, 8, 16, 32, etc.
+      - mks42d.set_hold_current:
+          id: motor1
+          percent: 50     # Valid: 10, 20, ..., 90
+      - mks42d.set_working_current:
+          id: motor1
+          ma: 800     # for example, 3000 mA for SERVO42D
+      - mks42d.set_mode:
+          id: motor1
+          mode: 4     # 0: CR_OPEN, 1: CR_CLOSE, 2: CR_vFOC, 3: SR_OPEN, 4: SR_CLOSE, 5: SR_vFOC
+
+      - delay: 2s
+      - mks42d.set_target_position:
+          id: motor1
+          target_position: 30000
+          speed: 200
+          acceleration: 100
+      - delay: 10s
+      - mks42d.send_home:
+          id: motor1
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16Mb
+  framework:
+    type: arduino
+logger: 
+external_components:
+  - source: 
+      type: local
+      path: "../components"
+    refresh: 0s
+    components:
+      - mks42d
+
+
+canbus:
+  platform: esp32_can
+  id: mycanbus
+  tx_pin: '1'
+  rx_pin: '2'
+  can_id: 680
+  bit_rate: 500kbps
+  on_frame: 
+    - can_id: 1
+      then:
+        - lambda: |-
+            id(motor1).process_frame(x);
+    - can_id: 2
+      then:
+        - lambda: |-
+            id(motor2).process_frame(x);
+
+
+mks42d:
+  - id: motor1
+    can_bus_id: mycanbus
+    can_id: 1
+    debug_received_messages: false
+  - id: motor2
+    can_bus_id: mycanbus
+    can_id: 2
+
