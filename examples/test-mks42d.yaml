@@ -107,3 +107,6 @@ text_sensor:
     step_state:
       name: "Motor1 Step State"
       id: motor1_step_state
+    home_state:
+      name: "Motor1 Home State"
+      id: motor1_home_state

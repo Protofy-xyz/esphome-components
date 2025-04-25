@@ -35,12 +35,14 @@ class MKS42DComponent : public Component {
   void query_io_status();
 
   void set_step_state_text_sensor(text_sensor::TextSensor *s) { this->step_state_text_sensor_ = s; }
+  void set_home_state_text_sensor(text_sensor::TextSensor *s) { this->home_state_text_sensor_ = s; }
 
  protected:
   uint8_t can_id_;
   canbus::Canbus *canbus_{nullptr};
   bool debug_received_messages_{false};
   text_sensor::TextSensor *step_state_text_sensor_{nullptr};
+  text_sensor::TextSensor *home_state_text_sensor_{nullptr};
 
 };
 

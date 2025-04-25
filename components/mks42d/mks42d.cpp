@@ -30,6 +30,15 @@ void MKS42DComponent::process_frame(const std::vector<uint8_t> &x) {
       this->step_state_text_sensor_->publish_state(MOTOR_STATES[idx]);
     }
   }
+  if (x[0] == 0x91){
+    static const char *const HOMING_STATES[] = {
+      "go home fail", "go home start", "go home success"
+    };
+    if (this->home_state_text_sensor_ != nullptr) {
+      uint8_t idx = x[1] < 3 ? x[1] : 0;
+      this->home_state_text_sensor_->publish_state(HOMING_STATES[idx]);
+    }
+  }
 }
 
 void MKS42DComponent::send_raw(const std::vector<uint8_t> &data) {
