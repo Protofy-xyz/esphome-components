@@ -25,7 +25,7 @@ esphome:
           hm_trig_level: false
           hm_dir: "CCW"
           hm_speed: 400
-          end_limit: true
+          end_limit: false
           sensorless_homing: true
       - mks42d.set_direction:
           id: motor1
@@ -42,16 +42,22 @@ esphome:
       - mks42d.set_mode:
           id: motor1
           mode: 4     # 0: CR_OPEN, 1: CR_CLOSE, 2: CR_vFOC, 3: SR_OPEN, 4: SR_CLOSE, 5: SR_vFOC
-
       - delay: 2s
+      - mks42d.send_home:
+          id: motor1
+      - delay: 10s
       - mks42d.set_target_position:
           id: motor1
-          target_position: 30000
+          target_position: 15000
           speed: 200
           acceleration: 100
       - delay: 10s
-      - mks42d.send_home:
+      - mks42d.set_target_position:
           id: motor1
+          target_position: 0
+          speed: 200
+          acceleration: 100
+
 esp32:
   board: esp32-s3-devkitc-1
   variant: esp32s3
@@ -95,3 +101,9 @@ mks42d:
     can_bus_id: mycanbus
     can_id: 2
 
+text_sensor:
+  - platform: mks42d
+    id: motor1
+    step_state:
+      name: "Motor1 Step State"
+      id: motor1_step_state

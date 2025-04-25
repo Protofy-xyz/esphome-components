@@ -20,6 +20,16 @@ void MKS42DComponent::process_frame(const std::vector<uint8_t> &x) {
       ESP_LOGD(TAG, "  data[%d] = 0x%02X", i, x[i]);
     }
   }
+  if (x[0] == 0xFE) {
+    static const char *const MOTOR_STATES[] = {
+      "run fail", "run starting", "run complete", "end limit stopped"
+    };
+    // ESP_LOGD(TAG, "Step control response = 0x%02X", x[1]);
+    if (this->step_state_text_sensor_ != nullptr) {
+      uint8_t idx = x[1] < 4 ? x[1] : 0;
+      this->step_state_text_sensor_->publish_state(MOTOR_STATES[idx]);
+    }
+  }
 }
 
 void MKS42DComponent::send_raw(const std::vector<uint8_t> &data) {
