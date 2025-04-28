@@ -104,7 +104,7 @@ void MKS42DComponent::set_target_position(int32_t target_position, int speed, in
   data.push_back((target_position >> 8) & 0xFF);
   data.push_back(target_position & 0xFF);
 
-  uint8_t crc = 1;
+  uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
   data.push_back(crc & 0xFF);
 
@@ -113,28 +113,28 @@ void MKS42DComponent::set_target_position(int32_t target_position, int speed, in
 
 void MKS42DComponent::send_home() {
   std::vector<uint8_t> data = {0x91, 0x92};
-  uint8_t crc = 1;
+  uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
   data.push_back(crc & 0xFF);
   send_raw(data);
 }
 void MKS42DComponent::enable_rotation(const std::string &state) {
   std::vector<uint8_t> data = {0xF3, (state == "ON") ? 0x01 : 0x00};
-  uint8_t crc = 1 + data[0] + data[1];
+  uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
   send_raw(data);
 }
 
 void MKS42DComponent::send_limit_remap(const std::string &state) {
   std::vector<uint8_t> data = {0x9E, (state == "ON") ? 0x01 : 0x00};
-  uint8_t crc = 1 + data[0] + data[1];
+  uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
   send_raw(data);
 }
 
 void MKS42DComponent::query_stall() {
   std::vector<uint8_t> data = {0x3E};
-  uint8_t crc = 1;
+  uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
   data.push_back(crc & 0xFF);
   send_raw(data);
@@ -142,7 +142,7 @@ void MKS42DComponent::query_stall() {
 
 void MKS42DComponent::unstall_command() {
   std::vector<uint8_t> data = {0x3D};
-  uint8_t crc = 1;
+  uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
   data.push_back(crc & 0xFF);
   send_raw(data);
@@ -159,7 +159,7 @@ void MKS42DComponent::set_no_limit_reverse(int degrees, int current_ma) {
     (uint8_t)((current_ma >> 8) & 0xFF),
     (uint8_t)(current_ma & 0xFF)
   };
-  uint8_t crc = 1;
+  uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
   data.push_back(crc & 0xFF);
   send_raw(data);
@@ -167,14 +167,14 @@ void MKS42DComponent::set_no_limit_reverse(int degrees, int current_ma) {
 
 void MKS42DComponent::set_direction(const std::string &dir) {
   std::vector<uint8_t> data = {0x86, (dir == "CCW") ? 0x01 : 0x00};
-  uint8_t crc = 1 + data[0] + data[1];
+  uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
   send_raw(data);
 }
 
 void MKS42DComponent::set_microstep(int microstep) {
   std::vector<uint8_t> data = {0x84, (uint8_t)(microstep & 0xFF)};
-  uint8_t crc = 1 + data[0] + data[1];
+  uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
   send_raw(data);
 }
@@ -182,7 +182,7 @@ void MKS42DComponent::set_microstep(int microstep) {
 void MKS42DComponent::set_hold_current(int percent) {
   uint8_t value = (percent / 10) - 1;
   std::vector<uint8_t> data = {0x9B, value};
-  uint8_t crc = 1 + data[0] + data[1];
+  uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
   send_raw(data);
 }
@@ -193,7 +193,7 @@ void MKS42DComponent::set_working_current(int ma) {
     (uint8_t)((ma >> 8) & 0xFF),
     (uint8_t)(ma & 0xFF)
   };
-  uint8_t crc = 1;
+  uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
   data.push_back(crc & 0xFF);
   send_raw(data);
@@ -201,7 +201,7 @@ void MKS42DComponent::set_working_current(int ma) {
 
 void MKS42DComponent::set_mode(int mode) {
   std::vector<uint8_t> data = {0x82, (uint8_t)mode};
-  uint8_t crc = 1 + data[0] + data[1];
+  uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
   send_raw(data);
 }
@@ -216,7 +216,7 @@ void MKS42DComponent::set_home_params(bool hm_trig_level, const std::string &hm_
     (uint8_t)(end_limit ? 1 : 0),
     (uint8_t)(sensorless ? 1 : 0)
   };
-  uint8_t crc = 1;
+  uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
   data.push_back(crc & 0xFF);
   send_raw(data);
@@ -224,7 +224,7 @@ void MKS42DComponent::set_home_params(bool hm_trig_level, const std::string &hm_
 
 void MKS42DComponent::query_io_status() {
   std::vector<uint8_t> data = {0x34};
-  uint8_t crc = 1;
+  uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
   data.push_back(crc & 0xFF);
   send_raw(data);
