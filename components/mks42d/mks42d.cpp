@@ -230,5 +230,13 @@ void MKS42DComponent::query_io_status() {
   send_raw(data);
 }
 
+void MKS42DComponent::set_0() {
+  std::vector<uint8_t> data = {0x92};
+  uint8_t crc = this->can_id_;
+  for (auto b : data) crc += b;
+  data.push_back(crc & 0xFF);
+  send_raw(data);
+}
+
 }  // namespace mks42d
 }  // namespace esphome

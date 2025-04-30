@@ -36,6 +36,7 @@ class MKS42DComponent : public Component {
   void set_mode(int mode);
   void set_home_params(bool hm_trig_level, const std::string &hm_dir, int hm_speed, bool end_limit, bool sensorless);
   void query_io_status();
+  void set_0();
   void set_throttle(uint32_t ms) { this->throttle_ = ms; }
 
   void set_step_state_text_sensor(text_sensor::TextSensor *s) { this->step_state_text_sensor_ = s; }
@@ -225,6 +226,14 @@ class QueryIOStatusAction : public Action<Ts...>, public Parented<MKS42DComponen
   }
 };
 
+// Set0Action
+template<typename... Ts>
+class Set0Action : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  void play(Ts... x) override {
+    this->parent_->set_0();
+  }
+};
 
 }  // namespace mks42d
 }  // namespace esphome

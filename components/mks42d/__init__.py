@@ -30,7 +30,7 @@ SetWorkingCurrentAction = mks42d_ns.class_("SetWorkingCurrentAction", automation
 SetModeAction = mks42d_ns.class_("SetModeAction", automation.Action)
 SetHomeParamsAction = mks42d_ns.class_("SetHomeParamsAction", automation.Action)
 QueryIOStatusAction = mks42d_ns.class_("QueryIOStatusAction", automation.Action)
-
+Set0Action = mks42d_ns.class_("Set0Action", automation.Action)
 
 CONFIG_SCHEMA = cv.ensure_list(cv.Schema({
     cv.Required(CONF_ID): cv.declare_id(MKS42DComponent),
@@ -252,6 +252,15 @@ async def set_home_params_action_to_code(config, action_id, template_arg, args):
     cv.Schema({cv.Required(CONF_ID): cv.use_id(MKS42DComponent)})
 )
 async def query_io_status_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    return var
+
+@automation.register_action(
+    "mks42d.set_0", Set0Action,
+    cv.Schema({cv.Required(CONF_ID): cv.use_id(MKS42DComponent)})
+)
+async def set_0_action_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
     await cg.register_parented(var, config[CONF_ID])
     return var
