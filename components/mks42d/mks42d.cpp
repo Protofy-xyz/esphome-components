@@ -254,5 +254,13 @@ void MKS42DComponent::set_0() {
   send_raw(data);
 }
 
+void MKS42DComponent::set_protection(const std::string &state) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: set_protection(state=%s)", this->can_id_, state.c_str());
+  std::vector<uint8_t> data = {0x88, (state == "ON") ? 0x01 : 0x00};
+  uint8_t crc = this->can_id_ + data[0] + data[1];
+  data.push_back(crc & 0xFF);
+  send_raw(data);
+}
+
 }  // namespace mks42d
 }  // namespace esphome

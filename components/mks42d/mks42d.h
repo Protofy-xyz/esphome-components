@@ -37,6 +37,7 @@ class MKS42DComponent : public Component {
   void set_home_params(bool hm_trig_level, const std::string &hm_dir, int hm_speed, bool end_limit, bool sensorless);
   void query_io_status();
   void set_0();
+  void set_protection(const std::string &state);
   void set_throttle(uint32_t ms) { this->throttle_ = ms; }
 
   void set_step_state_text_sensor(text_sensor::TextSensor *s) { this->step_state_text_sensor_ = s; }
@@ -233,6 +234,16 @@ class Set0Action : public Action<Ts...>, public Parented<MKS42DComponent> {
   void play(Ts... x) override {
     this->parent_->set_0();
   }
+};
+// SetProtectionAction
+template<typename... Ts>
+class SetProtectionAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+ TEMPLATABLE_VALUE(std::string, state)
+
+ void play(Ts... x) override {
+   this->parent_->set_protection(this->state_.value(x...));
+ }
 };
 
 }  // namespace mks42d

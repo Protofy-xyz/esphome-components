@@ -42,6 +42,9 @@ esphome:
       - mks42d.set_mode:
           id: motor1
           mode: 4     # 0: CR_OPEN, 1: CR_CLOSE, 2: CR_vFOC, 3: SR_OPEN, 4: SR_CLOSE, 5: SR_vFOC
+      - mks42d.set_protection:
+          id: motor1
+          state: "ON"
       - delay: 2s
       - mks42d.send_home:
           id: motor1

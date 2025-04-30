@@ -31,6 +31,8 @@ SetModeAction = mks42d_ns.class_("SetModeAction", automation.Action)
 SetHomeParamsAction = mks42d_ns.class_("SetHomeParamsAction", automation.Action)
 QueryIOStatusAction = mks42d_ns.class_("QueryIOStatusAction", automation.Action)
 Set0Action = mks42d_ns.class_("Set0Action", automation.Action)
+SetProtectionAction = mks42d_ns.class_("SetProtectionAction", automation.Action)
+
 
 CONFIG_SCHEMA = cv.ensure_list(cv.Schema({
     cv.Required(CONF_ID): cv.declare_id(MKS42DComponent),
@@ -263,4 +265,18 @@ async def query_io_status_action_to_code(config, action_id, template_arg, args):
 async def set_0_action_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
     await cg.register_parented(var, config[CONF_ID])
+    return var
+
+@automation.register_action(
+    "mks42d.set_protection", SetProtectionAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(MKS42DComponent),
+        cv.Required("state"): cv.templatable(cv.string_strict)
+    })
+)
+async def set_protection_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    state = await cg.templatable(config["state"], args, cg.std_string)
+    cg.add(var.set_state(state))
     return var
