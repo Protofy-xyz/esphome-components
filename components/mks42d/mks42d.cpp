@@ -57,7 +57,7 @@ void MKS42DComponent::process_frame(const std::vector<uint8_t> &x) {
     bool out1 = status & 0x04;
     bool out2 = status & 0x08;
 
-    ESP_LOGD(TAG, "IO Status: IN1=%u IN2=%u OUT1=%u OUT2=%u", in1, in2, out1, out2);
+    //ESP_LOGD(TAG, "IO Status: IN1=%u IN2=%u OUT1=%u OUT2=%u", in1, in2, out1, out2);
     if (this->in1_state_text_sensor_)
       this->in1_state_text_sensor_->publish_state(in1 ? "ON" : "OFF");
     if (this->in2_state_text_sensor_)
