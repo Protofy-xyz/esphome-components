@@ -95,6 +95,7 @@ void MKS42DComponent::send_raw(const std::vector<uint8_t> &data) {
 }
 
 void MKS42DComponent::set_target_position(int32_t target_position, int speed, int acceleration) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: set_target_position(target_position=%d, speed=%d, acceleration=%d)", this->can_id_, target_position, speed, acceleration);
   std::vector<uint8_t> data;
   data.push_back(0xFE);  // Command ID
   data.push_back((speed >> 8) & 0xFF);
@@ -112,6 +113,7 @@ void MKS42DComponent::set_target_position(int32_t target_position, int speed, in
 }
 
 void MKS42DComponent::send_home() {
+  ESP_LOGD(TAG, "[can_id=%u] Action: send_home", this->can_id_);
   std::vector<uint8_t> data = {0x91, 0x92};
   uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
@@ -119,6 +121,7 @@ void MKS42DComponent::send_home() {
   send_raw(data);
 }
 void MKS42DComponent::enable_rotation(const std::string &state) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: enable_rotation(state=%s)", this->can_id_, state.c_str());
   std::vector<uint8_t> data = {0xF3, (state == "ON") ? 0x01 : 0x00};
   uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
@@ -126,6 +129,7 @@ void MKS42DComponent::enable_rotation(const std::string &state) {
 }
 
 void MKS42DComponent::send_limit_remap(const std::string &state) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: send_limit_remap(state=%s)", this->can_id_, state.c_str());
   std::vector<uint8_t> data = {0x9E, (state == "ON") ? 0x01 : 0x00};
   uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
@@ -133,6 +137,7 @@ void MKS42DComponent::send_limit_remap(const std::string &state) {
 }
 
 void MKS42DComponent::query_stall() {
+  ESP_LOGD(TAG, "[can_id=%u] Action: query_stall", this->can_id_);
   std::vector<uint8_t> data = {0x3E};
   uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
@@ -141,6 +146,7 @@ void MKS42DComponent::query_stall() {
 }
 
 void MKS42DComponent::unstall_command() {
+  ESP_LOGD(TAG, "[can_id=%u] Action: unstall_command", this->can_id_);
   std::vector<uint8_t> data = {0x3D};
   uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
@@ -149,6 +155,7 @@ void MKS42DComponent::unstall_command() {
 }
 
 void MKS42DComponent::set_no_limit_reverse(int degrees, int current_ma) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: set_no_limit_reverse(degrees=%d, current_ma=%d)", this->can_id_, degrees, current_ma);
   uint32_t ret = (degrees * 0x4000) / 360;
   std::vector<uint8_t> data = {
     0x94,
@@ -166,6 +173,7 @@ void MKS42DComponent::set_no_limit_reverse(int degrees, int current_ma) {
 }
 
 void MKS42DComponent::set_direction(const std::string &dir) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: set_direction(dir=%s)", this->can_id_, dir.c_str());
   std::vector<uint8_t> data = {0x86, (dir == "CCW") ? 0x01 : 0x00};
   uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
@@ -173,6 +181,7 @@ void MKS42DComponent::set_direction(const std::string &dir) {
 }
 
 void MKS42DComponent::set_microstep(int microstep) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: set_microstep(microstep=%d)", this->can_id_, microstep);
   std::vector<uint8_t> data = {0x84, (uint8_t)(microstep & 0xFF)};
   uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
@@ -180,6 +189,7 @@ void MKS42DComponent::set_microstep(int microstep) {
 }
 
 void MKS42DComponent::set_hold_current(int percent) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: set_hold_current(percent=%d)", this->can_id_, percent);
   uint8_t value = (percent / 10) - 1;
   std::vector<uint8_t> data = {0x9B, value};
   uint8_t crc = this->can_id_ + data[0] + data[1];
@@ -188,6 +198,7 @@ void MKS42DComponent::set_hold_current(int percent) {
 }
 
 void MKS42DComponent::set_working_current(int ma) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: set_working_current(ma=%d)", this->can_id_, ma);
   std::vector<uint8_t> data = {
     0x83,
     (uint8_t)((ma >> 8) & 0xFF),
@@ -200,6 +211,7 @@ void MKS42DComponent::set_working_current(int ma) {
 }
 
 void MKS42DComponent::set_mode(int mode) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: set_mode(mode=%d)", this->can_id_, mode);
   std::vector<uint8_t> data = {0x82, (uint8_t)mode};
   uint8_t crc = this->can_id_ + data[0] + data[1];
   data.push_back(crc & 0xFF);
@@ -207,6 +219,8 @@ void MKS42DComponent::set_mode(int mode) {
 }
 
 void MKS42DComponent::set_home_params(bool hm_trig_level, const std::string &hm_dir, int hm_speed, bool end_limit, bool sensorless) {
+  ESP_LOGD(TAG, "[can_id=%u] Action: set_home_params(trigger_level=%s, dir=%s, speed=%d, end_limit=%s, sensorless=%s)",
+           this->can_id_, hm_trig_level?"true":"false", hm_dir.c_str(), hm_speed, end_limit?"true":"false", sensorless?"true":"false");
   std::vector<uint8_t> data = {
     0x90,
     (uint8_t)(hm_trig_level ? 1 : 0),
@@ -223,6 +237,7 @@ void MKS42DComponent::set_home_params(bool hm_trig_level, const std::string &hm_
 }
 
 void MKS42DComponent::query_io_status() {
+  ESP_LOGD(TAG, "[can_id=%u] Action: query_io_status", this->can_id_);
   std::vector<uint8_t> data = {0x34};
   uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
@@ -231,6 +246,7 @@ void MKS42DComponent::query_io_status() {
 }
 
 void MKS42DComponent::set_0() {
+  ESP_LOGD(TAG, "[can_id=%u] Action: set_0", this->can_id_);
   std::vector<uint8_t> data = {0x92};
   uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
