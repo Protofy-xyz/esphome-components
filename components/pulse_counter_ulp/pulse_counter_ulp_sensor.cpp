@@ -186,7 +186,7 @@ void PulseCounterUlpSensor::update() {
 
   if (this->total_sensor_ != nullptr) {
     // Get new overall value
-    const int32_t pulse_count = pulse_count_persist + pulse_count_ulp;
+    const int32_t pulse_count =  pulse_count_ulp;
 
     // Update persistent counter
     pulse_count_persist = (int) pulse_count;
