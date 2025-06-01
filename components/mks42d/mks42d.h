@@ -23,6 +23,7 @@ class MKS42DComponent : public Component {
 
   void send_raw(const std::vector<uint8_t> &data);
   void set_target_position(int32_t target_position, int speed, int acceleration);
+  void set_speed(int speed, int acceleration, const std::string &direction);
   void send_home();
   void enable_rotation(const std::string &state);
   void send_limit_remap(const std::string &state);
@@ -76,6 +77,22 @@ class SetTargetPositionAction : public Action<Ts...>, public Parented<MKS42DComp
     this->parent_->set_target_position(this->target_position_.value(x...),
                                        this->speed_.value(x...),
                                        this->acceleration_.value(x...));
+  }
+};
+// SetSpeedAction
+template<typename... Ts>
+class SetSpeedAction : public Action<Ts...>, public Parented<MKS42DComponent> {
+ public:
+  TEMPLATABLE_VALUE(int, speed)
+  TEMPLATABLE_VALUE(int, acceleration)
+  TEMPLATABLE_VALUE(std::string, direction)
+
+  void play(Ts... x) override {
+    this->parent_->set_speed(
+      this->speed_.value(x...),
+      this->acceleration_.value(x...),
+      this->direction_.value(x...)
+    );
   }
 };
 //SendHomeAction

@@ -17,6 +17,7 @@ CONF_DEBUG_RECEIVED_MESSAGES = "debug_received_messages"
 mks42d_ns = cg.esphome_ns.namespace("mks42d")
 MKS42DComponent = mks42d_ns.class_("MKS42DComponent", cg.Component)
 SetTargetPositionAction = mks42d_ns.class_("SetTargetPositionAction", automation.Action)
+SetSpeedAction = mks42d_ns.class_("SetSpeedAction", automation.Action)
 SendHomeAction = mks42d_ns.class_("SendHomeAction", automation.Action)
 EnableRotationAction = mks42d_ns.class_("EnableRotationAction", automation.Action)
 SendLimitRemapAction = mks42d_ns.class_("SendLimitRemapAction", automation.Action)
@@ -71,6 +72,23 @@ async def set_target_position_action_to_code(config, action_id, template_arg, ar
     cg.add(var.set_target_position(target_position))
     cg.add(var.set_speed(speed))
     cg.add(var.set_acceleration(acceleration))
+    return var
+
+@automation.register_action(
+    "mks42d.set_speed", SetSpeedAction,
+    cv.Schema({
+        cv.Required(CONF_ID): cv.use_id(MKS42DComponent),
+        cv.Required("speed"): cv.templatable(cv.int_),
+        cv.Required("acceleration"): cv.templatable(cv.int_),
+        cv.Required("direction"): cv.templatable(cv.string_strict)
+    })
+)
+async def set_speed_action_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    cg.add(var.set_speed(await cg.templatable(config["speed"], args, cg.int_)))
+    cg.add(var.set_acceleration(await cg.templatable(config["acceleration"], args, cg.int_)))
+    cg.add(var.set_direction(await cg.templatable(config["direction"], args, cg.std_string)))
     return var
 
 @automation.register_action(
