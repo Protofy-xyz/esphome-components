@@ -85,7 +85,7 @@ class BC127Component : public Component, public uart::UARTDevice {
   std::string ble_phone_address = "";
   std::string hfp_connection_id = "";
 
-  void process_data(const String &data);
+  void process_data(const std::string &data);
   void send_command(const std::string &command);
   void set_state(int state);
 

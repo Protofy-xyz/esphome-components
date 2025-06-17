@@ -9,6 +9,10 @@ static const char *const TAG = "bc127";
 
 BC127Component *controller = nullptr;
 
+inline bool starts_with(const std::string &str, const std::string &prefix) {
+  return str.rfind(prefix, 0) == 0;
+}
+
 BC127Component::BC127Component() {
 }
 
@@ -56,7 +60,7 @@ void BC127Component::setup() {
 
 void BC127Component::loop() {
   if (this->available()) {
-    String received_data = "";
+    std::string received_data = "";
 
     while (this->available()) {
       char c = this->read();
@@ -104,39 +108,39 @@ void BC127Component::loop() {
   }
 }
 
-void BC127Component::process_data(const String &data) {
+void BC127Component::process_data(const std::string &data) {
   // Handle 'Ready' state
-  if (data.startsWith("Ready")) {
+  if (starts_with(data, "Ready")) {
     ESP_LOGI(TAG, "Ready");
     this->set_state(BC127_READY);
     return;
   }
 
   // Handle 'OK' acknowledgment
-  if (data.startsWith("OK")) {
+  if (starts_with(data, "OK")) {
     ESP_LOGD(TAG, "Received OK from BC127");
     // Optionally, track which command was acknowledged
     return;
   }
 
   // Handle 'OPEN_OK' command
-  if (data.startsWith("OPEN_OK")) {
+  if (starts_with(data, "OPEN_OK")) {
     ESP_LOGD(TAG, "OPEN_OK command received");
 
-    int first_space = data.indexOf(' ');
-    int second_space = data.indexOf(' ', first_space + 1);
-    int third_space = data.indexOf(' ', second_space + 1);
+    int first_space = data.find(' ');
+    int second_space = data.find(' ', first_space + 1);
+    int third_space = data.find(' ', second_space + 1);
     ESP_LOGD(TAG, "Spaces: %d, %d, %d", first_space, second_space, third_space);
 
     if (first_space != -1 && second_space != -1 && third_space != -1) {
-      String var1 = data.substring(first_space + 1, second_space); // e.g., "13"
-      String var2 = data.substring(second_space + 1, third_space); // e.g., "HFP"
-      String var3 = data.substring(third_space + 1);               // e.g., "0CC6FD08CCAF"
+      std::string var1 = data.substr(first_space + 1, second_space - first_space - 1); // e.g., "13"
+      std::string var2 = data.substr(second_space + 1, third_space - second_space - 1); // e.g., "HFP"
+      std::string var3 = data.substr(third_space + 1);               // e.g., "0CC6FD08CCAF"
 
       ESP_LOGD(TAG, "Parsed values: var1=%s, var2=%s, var3=%s",
                var1.c_str(), var2.c_str(), var3.c_str());
 
-      if (var2.startsWith("HFP")) {
+      if (starts_with(var2, "HFP")) {
         this->hfp_connection_id = std::string(var1.c_str()); 
         this->ble_phone_address = std::string(var3.c_str());  
         ESP_LOGI(TAG, "HFP connection id: %s", this->hfp_connection_id.c_str());
@@ -150,13 +154,13 @@ void BC127Component::process_data(const String &data) {
   }
 
   // Handle 'CALLER_NUMBER' command
-  if (data.startsWith("CALLER_NUMBER")) {
-    int first_space = data.indexOf(' ');
-    int second_space = data.indexOf(' ', first_space + 1);
+  if (starts_with(data, "CALLER_NUMBER")) {
+    int first_space = data.find(' ');
+    int second_space = data.find(' ', first_space + 1);
 
     if (first_space != -1 && second_space != -1) {
-      String id = data.substring(first_space + 1, second_space);
-      String phone_number = data.substring(second_space + 1, data.length() - 1);
+      std::string id = data.substr(first_space + 1, second_space);
+      std::string phone_number = data.substr(second_space + 1, data.length() - 1);
 
       ESP_LOGI(TAG, "Parsed CALLER_NUMBER command");
       ESP_LOGI(TAG, "ID: %s", id.c_str());
@@ -202,23 +206,23 @@ void BC127Component::process_data(const String &data) {
   }
 
   // Handle 'CLOSE_OK' command
-  if (data.startsWith("CLOSE_OK")) {
+  if (starts_with(data, "CLOSE_OK")) {
     ESP_LOGD(TAG, "CLOSE_OK command received");
 
-    int first_space = data.indexOf(' ');
-    int second_space = data.indexOf(' ', first_space + 1);
-    int third_space = data.indexOf(' ', second_space + 1);
+    int first_space = data.find(' ');
+    int second_space = data.find(' ', first_space + 1);
+    int third_space = data.find(' ', second_space + 1);
     ESP_LOGD(TAG, "Spaces: %d, %d, %d", first_space, second_space, third_space);
 
     if (first_space != -1 && second_space != -1 && third_space != -1) {
-      String var1 = data.substring(first_space + 1, second_space); // e.g., "13"
-      String var2 = data.substring(second_space + 1, third_space); // e.g., "HFP"
-      String var3 = data.substring(third_space + 1);               // e.g., "0CC6FD08CCAF"
+      std::string var1 = data.substr(first_space + 1, second_space); // e.g., "13"
+      std::string var2 = data.substr(second_space + 1, third_space); // e.g., "HFP"
+      std::string var3 = data.substr(third_space + 1);               // e.g., "0CC6FD08CCAF"
 
       ESP_LOGD(TAG, "Parsed values: var1=%s, var2=%s, var3=%s",
                var1.c_str(), var2.c_str(), var3.c_str());
 
-      if (var2.startsWith("HFP")) {
+      if (starts_with(var2, "HFP")) {
         this->hfp_connection_id.clear();
         this->ble_phone_address.clear();
         ESP_LOGI(TAG, "HFP connection id cleared");
@@ -232,7 +236,7 @@ void BC127Component::process_data(const String &data) {
   }
 
   // Handle 'CALL_END' command
-  if (data.startsWith("CALL_END")) {
+  if (starts_with(data, "CALL_END")) {
     ESP_LOGI(TAG, "Parsed CALL_END command");
     this->call_end();
     this->set_state(BC127_CONNECTED);
@@ -241,7 +245,7 @@ void BC127Component::process_data(const String &data) {
   }
 
   // Handle 'CALL_OUTGOING' command
-  if (data.startsWith("CALL_OUTGOING")) {
+  if (starts_with(data, "CALL_OUTGOING")) {
     ESP_LOGI(TAG, "Parsed CALL_OUTGOING command");
     this->set_state(BC127_CALL_OUTGOING);
     return;
@@ -409,6 +413,7 @@ void BC127Component::set_state(int state) {
       break;
   }
 }
+
 
 
 }  // namespace bc127
