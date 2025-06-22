@@ -76,6 +76,9 @@ class BC127Component : public Component, public uart::UARTDevice {
   void volume_up();                 // VOLUME <linkID> UP
   void volume_down();               // VOLUME <linkID> DOWN
 
+  // Set the name of the device
+  void set_name(const std::string &name); 
+
  protected:
   int onetime;
   int state = 0;

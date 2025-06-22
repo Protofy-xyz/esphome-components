@@ -413,8 +413,13 @@ void BC127Component::set_state(int state) {
       break;
   }
 }
-
-
+void BC127Component::set_name(const std::string &name) {
+  std::string set_name_cmd = "SET NAME=" + name;
+  ESP_LOGI(TAG, "Setting BC127 name with command: %s", set_name_cmd.c_str());
+  this->send_command(set_name_cmd);
+  this->send_command("WRITE");
+  this->send_command("RESET");
+}
 
 }  // namespace bc127
 }  // namespace esphome
