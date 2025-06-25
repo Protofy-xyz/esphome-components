@@ -58,9 +58,9 @@ async def to_code(config):
         "mks42d.set_target_position", SetTargetPositionAction, 
         cv.Schema({
             cv.Required(CONF_ID): cv.use_id(MKS42DComponent),
-            cv.Required("target_position"): cv.int_,
-            cv.Required("speed"): cv.int_,
-            cv.Required("acceleration"): cv.int_,
+            cv.Required("target_position"): cv.templatable(cv.int_),
+            cv.Required("speed"): cv.templatable(cv.int_),
+            cv.Required("acceleration"): cv.templatable(cv.int_),
         })
 )
 async def set_target_position_action_to_code(config, action_id, template_arg, args):
