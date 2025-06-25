@@ -114,13 +114,12 @@ void MKS42DComponent::set_target_position(int32_t target_position, int speed, in
 void MKS42DComponent::set_speed(int speed, int acceleration, const std::string &direction) {
   ESP_LOGD(TAG, "[can_id=%u] Action: set_speed(speed=%d, acceleration=%d, direction=%s)",
            this->can_id_, speed, acceleration, direction.c_str());
+  uint16_t raw_speed = speed;  // 0–3000
+  uint8_t byte2 = ((direction == "CCW") ? 0x80 : 0x00) | ((raw_speed >> 8) & 0x0F);
+  uint8_t byte3 = raw_speed & 0xFF;
+  uint8_t byte4 = acceleration & 0xFF;
 
-  uint8_t dir_bit = (direction == "CCW") ? 0x80 : 0x00;  // CCW = 1 -> MSB set
-  uint16_t raw_speed = speed;  // Assuming range is 0-3000
-  uint8_t speed_high = dir_bit | ((raw_speed >> 4) & 0x7F);  // bits 11-4 (only lower 7 bits, MSB used for dir)
-  uint8_t speed_low  = raw_speed & 0x0F;                     // bits 3-0
-
-  std::vector<uint8_t> data = {0xF6, speed_high, speed_low, (uint8_t)(acceleration & 0xFF)};
+  std::vector<uint8_t> data = {0xF6, byte2, byte3, byte4};
   uint8_t crc = this->can_id_;
   for (auto b : data) crc += b;
   data.push_back(crc & 0xFF);
