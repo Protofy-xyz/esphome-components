@@ -78,6 +78,7 @@ class BC127Component : public Component, public uart::UARTDevice {
 
   // Set the name of the device
   void set_name(const std::string &name); 
+  void send_command(const std::string &command);
 
  protected:
   int onetime;
@@ -89,7 +90,6 @@ class BC127Component : public Component, public uart::UARTDevice {
   std::string hfp_connection_id = "";
 
   void process_data(const std::string &data);
-  void send_command(const std::string &command);
   void set_state(int state);
 
   CallbackManager<void()> on_connected_callbacks;
