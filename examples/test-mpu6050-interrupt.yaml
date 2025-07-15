@@ -1,0 +1,90 @@
+esphome:
+  name: test-mpu6050-interrupt
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.arduino.memory_type: opi_opi
+    board_upload.maximum_ram_size: 524288
+    build_flags:
+      - '-DBOARD_HAS_PSRAM'
+      - '-DARDUINO_USB_CDC_ON_BOOT=1'
+      - '-mfix-esp32-psram-cache-issue'
+  on_shutdown: 
+    then:
+      - lambda: |-
+          ESP_LOGI("main", "Shutting down, clearing interrupt latch");
+          id(my_mpu).clear_interrupt_latch();
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16Mb
+  framework:
+    type: esp-idf
+
+logger: {}
+external_components:
+  source: 
+    type: local
+    path: esphome-components/components
+  refresh: 0s
+  components:
+    - mpu6050
+
+i2c:
+  id: i2cbus
+  sda: 47
+  scl: 21
+  scan: true
+
+sensor:
+  - platform: mpu6050
+    id: my_mpu
+    address: 0x68
+    accel_x:
+      name: "MPU6050 Accel X"
+    accel_y:
+      name: "MPU6050 Accel Y"
+    accel_z:
+      name: "MPU6050 Accel Z"
+    gyro_x:
+      name: "MPU6050 Gyro X"
+    gyro_y:
+      name: "MPU6050 Gyro Y"
+    gyro_z:
+      name: "MPU6050 Gyro Z"
+    temperature:
+      name: "MPU6050 Temperature"
+    interrupt_pin: 
+        number: 2
+        allow_other_uses: true
+    motion_threshold: 100      #(0–255)
+    motion_duration: 5        #(ms)
+    update_interval: 20s
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 2
+      allow_other_uses: true
+    name: "MPU6050 Movement Detected"
+    filters:
+      - delayed_on: 100ms
+    on_press:
+      then:
+        - logger.log: "Movement detected by the MPU6050"
+        # - lambda: |-
+        #     id(my_mpu).clear_interrupt_latch();
+
+
+# deep_sleep:
+#   id: my_deep_sleep
+#   wakeup_pin:
+#     number: 2
+#     allow_other_uses: true
+#   run_duration: 10s
+
+
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          id(my_mpu).clear_interrupt_latch();
