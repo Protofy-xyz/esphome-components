@@ -1,0 +1,50 @@
+esphome:
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.arduino.memory_type: opi_opi
+    board_upload.maximum_ram_size: 524288
+    build_flags:
+      - '-DBOARD_HAS_PSRAM'
+      - '-DARDUINO_USB_CDC_ON_BOOT=1'
+      - '-mfix-esp32-psram-cache-issue'
+  name: test-gps
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16Mb
+  framework:
+    type: arduino
+
+logger:
+  # level: VERBOSE
+  hardware_uart: UART0
+external_components:
+  source: 
+    type: local
+    path: esphome-components/components
+  refresh: 0s
+  components:
+    - gps
+gps:
+  latitude:
+    name: "Latitude"
+  longitude:
+    name: "Longitude"
+  altitude:
+    name: "Altitude"
+  speed:
+    name: "Speed"
+  satellites:
+    name: "Satellites"
+  hdop:
+    name: "HDOP"
+  update_interval: 10s
+
+
+uart:
+  tx_pin: 40
+  rx_pin: 41
+  baud_rate: 9600
+
+
