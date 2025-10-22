@@ -1,6 +1,7 @@
 #include "esphome/core/log.h"
-#include <ArduinoJson.h>
 #include "gm77.h"  // Corrected header file name
+#include <string>
+#include <cctype>
 
 namespace esphome {
 namespace gm77 {
@@ -9,6 +10,18 @@ static const char *const TAG = "GM77";
 
 // Define the static controller pointer
 GM77Component *controller = nullptr;
+
+// Small helper to trim whitespace (incl. CR/LF)
+static inline void trim_inplace(std::string &s) {
+  // left trim
+  size_t start = 0;
+  while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) start++;
+  // right trim
+  size_t end = s.size();
+  while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1]))) end--;
+  if (start == 0 && end == s.size()) return;
+  s = s.substr(start, end - start);
+}
 
 // Constructor
 GM77Component::GM77Component() {
@@ -26,26 +39,27 @@ void GM77Component::setup() {
     return;  // Avoid further initialization if another instance exists
   }
 }
+
 void GM77Component::loop() {
   // Verifica si hay datos disponibles en la UART
   if (this->available()) {
-    String received_data = "";
-
+    std::string received_data;
+    
     // Lee los datos de la UART
     while (this->available()) {
-      char c = this->read();
-      received_data += c;
-      // ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
-      // Si detectamos el carácter de fin de línea, procesamos el comando
+      int byte_read = this->read();                   // UARTDevice::read() returns int/uint8_t depending on core
+      char c = static_cast<char>(byte_read);
+      received_data.push_back(c);
+
       if (c == '\r') {
-        received_data.trim();  // Remove leading and trailing whitespace
-        if (received_data.length() > 0) {  // Ensure data is not empty
+        trim_inplace(received_data);
+        if (!received_data.empty()) {
           ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
           this->process_data(received_data);
         } else {
-          ESP_LOGD(TAG, "Received invalid data (empty or whitespace), skipping processing");
+          ESP_LOGD(TAG, "Received invalid data (empty or whitespace), skipping");
         }
-        received_data = "";  // Reinicia para el próximo mensaje
+        received_data.clear();
       }
     }
   }
@@ -98,11 +112,10 @@ void GM77Component::start_decode() {
   // Dump configuration
 }
 
-void GM77Component::process_data(const String &data) {
-  this->tag = data.c_str();
+void GM77Component::process_data(const std::string &data) {
+  this->tag = data;                      // store last tag
   this->add_on_tag_callback([this]() { ESP_LOGD(TAG, "ADD ON TAG CALLBACK"); });
-  auto &callbacks = on_tag_callbacks;
-  callbacks.call();
+  on_tag_callbacks.call();               // trigger callbacks
 }
 
 void GM77Component::add_on_tag_callback(std::function<void()> &&trigger_function) {
