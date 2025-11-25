@@ -27,8 +27,6 @@ CONFIG_SCHEMA = cv.All(
 )
 
 async def to_code(config):
-    cg.add_library("bblanchon/ArduinoJson", "6.18.5")
-
     for conf in config:
         var = cg.new_Pvariable(conf[CONF_ID])
         await cg.register_component(var, conf)
