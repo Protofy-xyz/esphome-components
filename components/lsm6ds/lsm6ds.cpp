@@ -15,9 +15,6 @@ static const uint8_t LSM6DS_WHO_AM_I_DSL33 = 0x6A;
 static const uint8_t LSM6DS_WHO_AM_I_DSOX = 0x6C;
 static const uint8_t LSM6DS_WHO_AM_I_DS3  = 0x69;
 
-static const float LSM6DS_SENSITIVITY_GYRO_DPS = 0.00875f;      // 245 dps FS
-static const float LSM6DS_SENSITIVITY_ACCEL_MS2 = 0.000598f;    // 2g FS -> m/s^2 per LSB
-
 void LSM6DSComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up LSM6DS...");
 
@@ -30,14 +27,56 @@ void LSM6DSComponent::setup() {
     return;
   }
 
-  // Configure accelerometer: 104 Hz ODR, 2g full scale.
-  if (!this->write_byte(LSM6DS_REG_CTRL1_XL, 0x40)) {
+  // Configure accelerometer: 104 Hz ODR, range selected below.
+  uint8_t ctrl1_xl = 0x40;  // ODR = 104 Hz
+  switch (this->accel_range_) {
+    case ACCEL_RANGE_2G:
+      ctrl1_xl |= 0x00;
+      this->accel_sensitivity_ = 0.000598f;  // 0.061 mg/LSB
+      break;
+    case ACCEL_RANGE_4G:
+      ctrl1_xl |= 0x08;
+      this->accel_sensitivity_ = 0.001196f;  // 0.122 mg/LSB
+      break;
+    case ACCEL_RANGE_8G:
+      ctrl1_xl |= 0x0C;
+      this->accel_sensitivity_ = 0.002392f;  // 0.244 mg/LSB
+      break;
+    case ACCEL_RANGE_16G:
+      ctrl1_xl |= 0x04;
+      this->accel_sensitivity_ = 0.004784f;  // 0.488 mg/LSB
+      break;
+  }
+  if (!this->write_byte(LSM6DS_REG_CTRL1_XL, ctrl1_xl)) {
     ESP_LOGE(TAG, "Failed to configure CTRL1_XL.");
     this->mark_failed();
     return;
   }
-  // Configure gyroscope: 104 Hz ODR, 245 dps full scale.
-  if (!this->write_byte(LSM6DS_REG_CTRL2_G, 0x40)) {
+
+  // Configure gyroscope: 104 Hz ODR, range selected below.
+  uint8_t ctrl2_g = 0x40;  // ODR = 104 Hz
+  switch (this->gyro_range_) {
+    case GYRO_RANGE_125DPS:
+      ctrl2_g |= 0x02;  // FS_125 bit
+      this->gyro_sensitivity_ = 0.004375f;
+      break;
+    case GYRO_RANGE_250DPS:
+      this->gyro_sensitivity_ = 0.00875f;
+      break;
+    case GYRO_RANGE_500DPS:
+      ctrl2_g |= 0x10;
+      this->gyro_sensitivity_ = 0.0175f;
+      break;
+    case GYRO_RANGE_1000DPS:
+      ctrl2_g |= 0x20;
+      this->gyro_sensitivity_ = 0.035f;
+      break;
+    case GYRO_RANGE_2000DPS:
+      ctrl2_g |= 0x30;
+      this->gyro_sensitivity_ = 0.07f;
+      break;
+  }
+  if (!this->write_byte(LSM6DS_REG_CTRL2_G, ctrl2_g)) {
     ESP_LOGE(TAG, "Failed to configure CTRL2_G.");
     this->mark_failed();
     return;
@@ -69,13 +108,13 @@ void LSM6DSComponent::update() {
     return;
   }
 
-  const float gx_dps = gx * LSM6DS_SENSITIVITY_GYRO_DPS;
-  const float gy_dps = gy * LSM6DS_SENSITIVITY_GYRO_DPS;
-  const float gz_dps = gz * LSM6DS_SENSITIVITY_GYRO_DPS;
+  const float gx_dps = gx * this->gyro_sensitivity_;
+  const float gy_dps = gy * this->gyro_sensitivity_;
+  const float gz_dps = gz * this->gyro_sensitivity_;
 
-  const float ax_ms2 = ax * LSM6DS_SENSITIVITY_ACCEL_MS2;
-  const float ay_ms2 = ay * LSM6DS_SENSITIVITY_ACCEL_MS2;
-  const float az_ms2 = az * LSM6DS_SENSITIVITY_ACCEL_MS2;
+  const float ax_ms2 = ax * this->accel_sensitivity_;
+  const float ay_ms2 = ay * this->accel_sensitivity_;
+  const float az_ms2 = az * this->accel_sensitivity_;
 
   if (this->gyro_x_sensor_ != nullptr)
     this->gyro_x_sensor_->publish_state(gx_dps);

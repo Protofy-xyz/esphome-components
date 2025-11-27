@@ -7,6 +7,21 @@
 namespace esphome {
 namespace lsm6ds {
 
+enum AccelRange {
+  ACCEL_RANGE_2G,
+  ACCEL_RANGE_4G,
+  ACCEL_RANGE_8G,
+  ACCEL_RANGE_16G,
+};
+
+enum GyroRange {
+  GYRO_RANGE_125DPS,
+  GYRO_RANGE_250DPS,
+  GYRO_RANGE_500DPS,
+  GYRO_RANGE_1000DPS,
+  GYRO_RANGE_2000DPS,
+};
+
 class LSM6DSComponent : public PollingComponent, public i2c::I2CDevice {
  public:
   void setup() override;
@@ -22,6 +37,8 @@ class LSM6DSComponent : public PollingComponent, public i2c::I2CDevice {
   void set_gyro_x_sensor(sensor::Sensor *s) { gyro_x_sensor_ = s; }
   void set_gyro_y_sensor(sensor::Sensor *s) { gyro_y_sensor_ = s; }
   void set_gyro_z_sensor(sensor::Sensor *s) { gyro_z_sensor_ = s; }
+  void set_accel_range(AccelRange range) { accel_range_ = range; }
+  void set_gyro_range(GyroRange range) { gyro_range_ = range; }
 
  protected:
   bool read_raw_(int16_t &gx, int16_t &gy, int16_t &gz, int16_t &ax, int16_t &ay, int16_t &az);
@@ -32,6 +49,11 @@ class LSM6DSComponent : public PollingComponent, public i2c::I2CDevice {
   sensor::Sensor *gyro_x_sensor_{nullptr};
   sensor::Sensor *gyro_y_sensor_{nullptr};
   sensor::Sensor *gyro_z_sensor_{nullptr};
+
+  AccelRange accel_range_{ACCEL_RANGE_2G};
+  GyroRange gyro_range_{GYRO_RANGE_250DPS};
+  float accel_sensitivity_{0.000598f};  // m/s^2 per LSB @ 2g
+  float gyro_sensitivity_{0.00875f};    // dps per LSB @ 250 dps
 };
 
 }  // namespace lsm6ds
