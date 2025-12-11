@@ -42,10 +42,12 @@ class LSM6DSComponent : public PollingComponent, public i2c::I2CDevice {
   void set_shake_sensor(binary_sensor::BinarySensor *s) { shake_binary_sensor_ = s; }
   void set_shake_threshold(float threshold) { shake_threshold_ms2_ = threshold; }
   void set_shake_latch_ms(uint32_t latch_ms) { shake_latch_ms_ = latch_ms; }
+  void set_shake_check_interval(uint32_t interval_ms) { shake_check_interval_ms_ = interval_ms; }
 
  protected:
   bool read_raw_(int16_t &gx, int16_t &gy, int16_t &gz, int16_t &ax, int16_t &ay, int16_t &az);
   void handle_shake_(float ax_ms2, float ay_ms2, float az_ms2);
+  void check_shake_tick_();
 
   sensor::Sensor *accel_x_sensor_{nullptr};
   sensor::Sensor *accel_y_sensor_{nullptr};
@@ -61,6 +63,7 @@ class LSM6DSComponent : public PollingComponent, public i2c::I2CDevice {
   float gyro_sensitivity_{0.00875f};    // dps per LSB @ 250 dps
   float shake_threshold_ms2_{8.0f};
   uint32_t shake_latch_ms_{500};
+  uint32_t shake_check_interval_ms_{100};
   bool shake_state_{false};
   uint32_t last_shake_ms_{0};
   float prev_ax_ms2_{0};

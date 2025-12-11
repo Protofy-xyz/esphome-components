@@ -30,6 +30,7 @@ CONF_GYRO_RANGE = "gyro_range"
 CONF_SHAKE = "shake"
 CONF_SHAKE_THRESHOLD = "shake_threshold"
 CONF_SHAKE_DURATION = "shake_duration"
+CONF_SHAKE_CHECK_INTERVAL = "shake_check_interval"
 
 ACCEL_RANGES = {
     "2G": AccelRange.ACCEL_RANGE_2G,
@@ -124,6 +125,7 @@ CONFIG_SCHEMA = (
                 cv.string_strict, _parse_shake_threshold
             ),
             cv.Optional(CONF_SHAKE_DURATION, default="500ms"): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_SHAKE_CHECK_INTERVAL, default="100ms"): cv.positive_time_period_milliseconds,
         }
     )
     .extend(cv.polling_component_schema("1s"))
@@ -155,3 +157,4 @@ async def to_code(config):
         cg.add(var.set_shake_sensor(shake))
     cg.add(var.set_shake_threshold(config[CONF_SHAKE_THRESHOLD]))
     cg.add(var.set_shake_latch_ms(config[CONF_SHAKE_DURATION].total_milliseconds))
+    cg.add(var.set_shake_check_interval(config[CONF_SHAKE_CHECK_INTERVAL].total_milliseconds))

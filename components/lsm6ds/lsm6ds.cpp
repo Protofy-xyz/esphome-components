@@ -90,6 +90,10 @@ void LSM6DSComponent::setup() {
     this->mark_failed();
     return;
   }
+
+  if (this->shake_binary_sensor_ != nullptr) {
+    this->set_interval("shake_check", this->shake_check_interval_ms_, [this]() { this->check_shake_tick_(); });
+  }
 }
 
 void LSM6DSComponent::dump_config() {
@@ -106,6 +110,7 @@ void LSM6DSComponent::dump_config() {
     LOG_BINARY_SENSOR("  ", "Shake", this->shake_binary_sensor_);
     ESP_LOGCONFIG(TAG, "  Shake threshold: %.2f m/s^2, latch: %u ms", this->shake_threshold_ms2_,
                   this->shake_latch_ms_);
+    ESP_LOGCONFIG(TAG, "  Shake check interval: %u ms", this->shake_check_interval_ms_);
   }
 }
 
@@ -202,6 +207,19 @@ void LSM6DSComponent::handle_shake_(float ax_ms2, float ay_ms2, float az_ms2) {
     this->shake_state_ = false;
     this->shake_binary_sensor_->publish_state(false);
   }
+}
+
+void LSM6DSComponent::check_shake_tick_() {
+  int16_t gx, gy, gz, ax, ay, az;
+  if (!this->read_raw_(gx, gy, gz, ax, ay, az)) {
+    return;
+  }
+
+  const float ax_ms2 = ax * this->accel_sensitivity_;
+  const float ay_ms2 = ay * this->accel_sensitivity_;
+  const float az_ms2 = az * this->accel_sensitivity_;
+
+  this->handle_shake_(ax_ms2, ay_ms2, az_ms2);
 }
 
 }  // namespace lsm6ds
