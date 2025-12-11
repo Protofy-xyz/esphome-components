@@ -1,5 +1,8 @@
 #include "lsm6ds.h"
 #include "esphome/core/log.h"
+#include "esphome/core/helpers.h"
+#include "esphome/core/hal.h"
+#include <cmath>
 
 namespace esphome {
 namespace lsm6ds {
@@ -99,6 +102,11 @@ void LSM6DSComponent::dump_config() {
   LOG_SENSOR("  ", "Gyro X", this->gyro_x_sensor_);
   LOG_SENSOR("  ", "Gyro Y", this->gyro_y_sensor_);
   LOG_SENSOR("  ", "Gyro Z", this->gyro_z_sensor_);
+  if (this->shake_binary_sensor_ != nullptr) {
+    LOG_BINARY_SENSOR("  ", "Shake", this->shake_binary_sensor_);
+    ESP_LOGCONFIG(TAG, "  Shake threshold: %.2f m/s^2, latch: %u ms", this->shake_threshold_ms2_,
+                  this->shake_latch_ms_);
+  }
 }
 
 void LSM6DSComponent::update() {
@@ -130,6 +138,8 @@ void LSM6DSComponent::update() {
   if (this->accel_z_sensor_ != nullptr)
     this->accel_z_sensor_->publish_state(az_ms2);
 
+  this->handle_shake_(ax_ms2, ay_ms2, az_ms2);
+
   //ESP_LOGD(TAG, "G[%.2f, %.2f, %.2f] dps  A[%.3f, %.3f, %.3f] m/s^2", gx_dps, gy_dps, gz_dps, ax_ms2, ay_ms2, az_ms2);
   this->status_clear_warning();
 }
@@ -150,6 +160,48 @@ bool LSM6DSComponent::read_raw_(int16_t &gx, int16_t &gy, int16_t &gz, int16_t &
   az = static_cast<int16_t>((buffer[11] << 8) | buffer[10]);
 
   return true;
+}
+
+void LSM6DSComponent::handle_shake_(float ax_ms2, float ay_ms2, float az_ms2) {
+  if (this->shake_binary_sensor_ == nullptr)
+    return;
+
+  const float magnitude = sqrtf(ax_ms2 * ax_ms2 + ay_ms2 * ay_ms2 + az_ms2 * az_ms2);
+  bool triggered = false;
+  float delta_mag = 0.0f;
+  float delta_sum = 0.0f;
+
+  if (this->has_prev_accel_) {
+    delta_mag = fabsf(magnitude - this->prev_accel_mag_);
+    delta_sum = fabsf(ax_ms2 - this->prev_ax_ms2_) + fabsf(ay_ms2 - this->prev_ay_ms2_) +
+                fabsf(az_ms2 - this->prev_az_ms2_);
+
+    // Treat large swings across any axis or overall magnitude as a shake.
+    if (delta_mag > this->shake_threshold_ms2_ || delta_sum > this->shake_threshold_ms2_) {
+      triggered = true;
+    }
+  }
+
+  this->prev_ax_ms2_ = ax_ms2;
+  this->prev_ay_ms2_ = ay_ms2;
+  this->prev_az_ms2_ = az_ms2;
+  this->prev_accel_mag_ = magnitude;
+  this->has_prev_accel_ = true;
+
+  const uint32_t now = millis();
+  if (triggered) {
+    this->last_shake_ms_ = now;
+    if (!this->shake_state_) {
+      this->shake_state_ = true;
+      this->shake_binary_sensor_->publish_state(true);
+      ESP_LOGD(TAG, "Shake detected (|Δ|=%.2f, sumΔ=%.2f)", delta_mag, delta_sum);
+    }
+  }
+
+  if (this->shake_state_ && (now - this->last_shake_ms_ >= this->shake_latch_ms_)) {
+    this->shake_state_ = false;
+    this->shake_binary_sensor_->publish_state(false);
+  }
 }
 
 }  // namespace lsm6ds

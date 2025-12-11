@@ -1,10 +1,16 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import i2c, sensor
-from esphome.const import CONF_ID, STATE_CLASS_MEASUREMENT, UNIT_DEGREE_PER_SECOND, UNIT_METER_PER_SECOND_SQUARED
+from esphome.components import binary_sensor, i2c, sensor
+from esphome.const import (
+    CONF_ID,
+    STATE_CLASS_MEASUREMENT,
+    UNIT_DEGREE_PER_SECOND,
+    UNIT_METER_PER_SECOND_SQUARED,
+)
 
 CODEOWNERS = ["@DenshiNingen"]
 DEPENDENCIES = ["i2c"]
+AUTO_LOAD = ["binary_sensor"]
 
 lsm6ds_ns = cg.esphome_ns.namespace("lsm6ds")
 LSM6DSComponent = lsm6ds_ns.class_("LSM6DSComponent", cg.PollingComponent, i2c.I2CDevice)
@@ -19,6 +25,9 @@ CONF_GYRO_Y = "gyro_y"
 CONF_GYRO_Z = "gyro_z"
 CONF_ACCEL_RANGE = "accel_range"
 CONF_GYRO_RANGE = "gyro_range"
+CONF_SHAKE = "shake"
+CONF_SHAKE_THRESHOLD = "shake_threshold"
+CONF_SHAKE_DURATION = "shake_duration"
 
 ACCEL_RANGES = {
     "2G": AccelRange.ACCEL_RANGE_2G,
@@ -61,6 +70,9 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_GYRO_Z): gyro_schema,
             cv.Optional(CONF_ACCEL_RANGE, default="2G"): cv.enum(ACCEL_RANGES, upper=True),
             cv.Optional(CONF_GYRO_RANGE, default="250DPS"): cv.enum(GYRO_RANGES, upper=True),
+            cv.Optional(CONF_SHAKE): binary_sensor.binary_sensor_schema(icon="mdi:vibrate"),
+            cv.Optional(CONF_SHAKE_THRESHOLD, default=8.0): cv.positive_float,
+            cv.Optional(CONF_SHAKE_DURATION, default="500ms"): cv.positive_time_period_milliseconds,
         }
     )
     .extend(cv.polling_component_schema("1s"))
@@ -85,3 +97,8 @@ async def to_code(config):
 
     cg.add(var.set_accel_range(config[CONF_ACCEL_RANGE]))
     cg.add(var.set_gyro_range(config[CONF_GYRO_RANGE]))
+    if CONF_SHAKE in config:
+        shake = await binary_sensor.new_binary_sensor(config[CONF_SHAKE])
+        cg.add(var.set_shake_sensor(shake))
+    cg.add(var.set_shake_threshold(config[CONF_SHAKE_THRESHOLD]))
+    cg.add(var.set_shake_latch_ms(config[CONF_SHAKE_DURATION].total_milliseconds))
