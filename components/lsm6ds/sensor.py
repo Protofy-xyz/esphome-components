@@ -1,3 +1,5 @@
+import re
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import binary_sensor, i2c, sensor
@@ -44,6 +46,18 @@ GYRO_RANGES = {
     "2000DPS": GyroRange.GYRO_RANGE_2000DPS,
 }
 
+G_MS2 = 9.80665
+SHAKE_THRESHOLD_RE = re.compile(
+    r"^\s*(?P<value>[-+]?(?:\d+(?:\.\d+)?|\.\d+))\s*(?P<unit>m/s\^2|m/s²|m/s\*\*2)\s*$",
+    re.IGNORECASE,
+)
+ACCEL_RANGE_MAX_MS2 = {
+    "2G": 2 * G_MS2,
+    "4G": 4 * G_MS2,
+    "8G": 8 * G_MS2,
+    "16G": 16 * G_MS2,
+}
+
 accel_schema = sensor.sensor_schema(
     unit_of_measurement=UNIT_METER_PER_SECOND_SQUARED,
     accuracy_decimals=3,
@@ -58,6 +72,41 @@ gyro_schema = sensor.sensor_schema(
     icon="mdi:rotate-360",
 )
 
+
+def _parse_shake_threshold(value):
+    if isinstance(value, (int, float)):
+        raise cv.Invalid("shake_threshold must include units, e.g. '8 m/s^2'")
+    if not isinstance(value, str):
+        raise cv.Invalid("shake_threshold must be a string with units, e.g. '8 m/s^2'")
+
+    match = SHAKE_THRESHOLD_RE.match(value)
+    if not match:
+        raise cv.Invalid("Invalid shake_threshold. Use a value with units, e.g. '8 m/s^2'")
+
+    numeric_value = float(match.group("value"))
+    return numeric_value
+
+
+def _validate_shake(config):
+    # shake_threshold is compared against delta acceleration (m/s²); keep it within sensor full-scale.
+    threshold = config.get(CONF_SHAKE_THRESHOLD)
+    if threshold is None:
+        return config
+    accel_range_value = config.get(CONF_ACCEL_RANGE, ACCEL_RANGES["2G"])
+    # Map enum back to the label we use in docs/schemas.
+    accel_range_label = next((label for label, enum_val in ACCEL_RANGES.items() if enum_val == accel_range_value), "2G")
+    max_ms2 = ACCEL_RANGE_MAX_MS2.get(accel_range_label, ACCEL_RANGE_MAX_MS2["2G"])
+
+    if threshold <= 0:
+        raise cv.Invalid("shake_threshold must be greater than 0 m/s²")
+    if threshold > max_ms2:
+        raise cv.Invalid(
+            f"shake_threshold ({threshold} m/s²) exceeds the accelerometer full-scale (~{max_ms2:.1f} m/s²) for accel_range {accel_range_label}"
+        )
+
+    return config
+
+
 CONFIG_SCHEMA = (
     cv.Schema(
         {
@@ -71,13 +120,17 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_ACCEL_RANGE, default="2G"): cv.enum(ACCEL_RANGES, upper=True),
             cv.Optional(CONF_GYRO_RANGE, default="250DPS"): cv.enum(GYRO_RANGES, upper=True),
             cv.Optional(CONF_SHAKE): binary_sensor.binary_sensor_schema(icon="mdi:vibrate"),
-            cv.Optional(CONF_SHAKE_THRESHOLD, default=8.0): cv.positive_float,
+            cv.Optional(CONF_SHAKE_THRESHOLD, default="8 m/s^2"): cv.All(
+                cv.string_strict, _parse_shake_threshold
+            ),
             cv.Optional(CONF_SHAKE_DURATION, default="500ms"): cv.positive_time_period_milliseconds,
         }
     )
     .extend(cv.polling_component_schema("1s"))
     .extend(i2c.i2c_device_schema(0x6A))
 )
+
+CONFIG_SCHEMA = cv.All(CONFIG_SCHEMA, _validate_shake)
 
 
 async def to_code(config):
