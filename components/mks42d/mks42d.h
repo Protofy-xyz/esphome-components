@@ -73,7 +73,7 @@ class SetTargetPositionAction : public Action<Ts...>, public Parented<MKS42DComp
   TEMPLATABLE_VALUE(int, speed)
   TEMPLATABLE_VALUE(int, acceleration)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_target_position(this->target_position_.value(x...),
                                        this->speed_.value(x...),
                                        this->acceleration_.value(x...));
@@ -87,7 +87,7 @@ class SetSpeedAction : public Action<Ts...>, public Parented<MKS42DComponent> {
   TEMPLATABLE_VALUE(int, acceleration)
   TEMPLATABLE_VALUE(std::string, direction)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_speed(
       this->speed_.value(x...),
       this->acceleration_.value(x...),
@@ -99,7 +99,7 @@ class SetSpeedAction : public Action<Ts...>, public Parented<MKS42DComponent> {
 template<typename... Ts>
 class SendHomeAction : public Action<Ts...>, public Parented<MKS42DComponent> {
  public:
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->send_home();
   }
 };
@@ -110,7 +110,7 @@ class EnableRotationAction : public Action<Ts...>, public Parented<MKS42DCompone
  public:
   TEMPLATABLE_VALUE(std::string, state)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->enable_rotation(this->state_.value(x...));
   }
 };
@@ -121,7 +121,7 @@ class SendLimitRemapAction : public Action<Ts...>, public Parented<MKS42DCompone
  public:
   TEMPLATABLE_VALUE(std::string, state)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->send_limit_remap(this->state_.value(x...));
   }
 };
@@ -130,7 +130,7 @@ class SendLimitRemapAction : public Action<Ts...>, public Parented<MKS42DCompone
 template<typename... Ts>
 class QueryStallAction : public Action<Ts...>, public Parented<MKS42DComponent> {
  public:
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->query_stall();
   }
 };
@@ -139,7 +139,7 @@ class QueryStallAction : public Action<Ts...>, public Parented<MKS42DComponent> 
 template<typename... Ts>
 class UnstallCommandAction : public Action<Ts...>, public Parented<MKS42DComponent> {
  public:
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->unstall_command();
   }
 };
@@ -151,7 +151,7 @@ class SetNoLimitReverseAction : public Action<Ts...>, public Parented<MKS42DComp
   TEMPLATABLE_VALUE(int, degrees)
   TEMPLATABLE_VALUE(int, current_ma)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_no_limit_reverse(
       this->degrees_.value(x...),
       this->current_ma_.value(x...)
@@ -165,7 +165,7 @@ class SetDirectionAction : public Action<Ts...>, public Parented<MKS42DComponent
  public:
   TEMPLATABLE_VALUE(std::string, direction)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_direction(this->direction_.value(x...));
   }
 };
@@ -176,7 +176,7 @@ class SetMicrostepAction : public Action<Ts...>, public Parented<MKS42DComponent
  public:
   TEMPLATABLE_VALUE(int, microstep)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_microstep(this->microstep_.value(x...));
   }
 };
@@ -187,7 +187,7 @@ class SetHoldCurrentAction : public Action<Ts...>, public Parented<MKS42DCompone
  public:
   TEMPLATABLE_VALUE(int, percent)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_hold_current(this->percent_.value(x...));
   }
 };
@@ -198,7 +198,7 @@ class SetWorkingCurrentAction : public Action<Ts...>, public Parented<MKS42DComp
  public:
   TEMPLATABLE_VALUE(int, ma)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_working_current(this->ma_.value(x...));
   }
 };
@@ -209,7 +209,7 @@ class SetModeAction : public Action<Ts...>, public Parented<MKS42DComponent> {
  public:
   TEMPLATABLE_VALUE(int, mode)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_mode(this->mode_.value(x...));
   }
 };
@@ -224,7 +224,7 @@ class SetHomeParamsAction : public Action<Ts...>, public Parented<MKS42DComponen
   TEMPLATABLE_VALUE(bool, end_limit)
   TEMPLATABLE_VALUE(bool, sensorless_homing)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_home_params(
       this->hm_trig_level_.value(x...),
       this->hm_dir_.value(x...),
@@ -239,7 +239,7 @@ class SetHomeParamsAction : public Action<Ts...>, public Parented<MKS42DComponen
 template<typename... Ts>
 class QueryIOStatusAction : public Action<Ts...>, public Parented<MKS42DComponent> {
  public:
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->query_io_status();
   }
 };
@@ -248,7 +248,7 @@ class QueryIOStatusAction : public Action<Ts...>, public Parented<MKS42DComponen
 template<typename... Ts>
 class Set0Action : public Action<Ts...>, public Parented<MKS42DComponent> {
  public:
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     this->parent_->set_0();
   }
 };
@@ -258,7 +258,7 @@ class SetProtectionAction : public Action<Ts...>, public Parented<MKS42DComponen
  public:
  TEMPLATABLE_VALUE(std::string, state)
 
- void play(Ts... x) override {
+ void play(const Ts &...x) override {
    this->parent_->set_protection(this->state_.value(x...));
  }
 };
