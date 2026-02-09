@@ -1,0 +1,86 @@
+esphome:
+  name: meshtastic-gateway
+  friendly_name: Meshtastic Gateway
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.arduino.memory_type: opi_opi
+    board_upload.maximum_ram_size: 524288
+    build_flags:
+      - '-DBOARD_HAS_PSRAM'
+      - '-DARDUINO_USB_CDC_ON_BOOT=1'
+      - '-mfix-esp32-psram-cache-issue'
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16Mb
+  framework:
+    type: arduino
+
+logger:
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [meshtastic]
+
+uart:
+  id: uart_mesh
+  tx_pin: GPIO1
+  rx_pin: GPIO2
+  baud_rate: 115200
+
+deep_sleep:
+  id: deep_sleep_1
+  run_duration: 45s
+  sleep_duration: 60s
+
+meshtastic:
+  id: mesh
+  uart_id: uart_mesh
+  power_pin: GPIO40
+  boot_timeout: 30s
+  ack_timeout: 15s
+  destination: 0xFFFFFFFF
+  channel: 0
+
+  on_ready:
+    - logger.log: "Meshtastic ready - sending data"
+    - meshtastic.send_text:
+        id: mesh
+        message: !lambda |-
+          char buf[200];
+          snprintf(buf, sizeof(buf),
+            "{\"device\":\"%s\",\"uptime\":%lu,\"free_heap\":%u}",
+            App.get_name().c_str(),
+            (unsigned long)(millis() / 1000),
+            ESP.getFreeHeap());
+          return std::string(buf);
+
+  on_message:
+    - logger.log:
+        format: "Mesh RX from 0x%08X: %s"
+        args: ['id(mesh).get_last_from_node()', 'x.c_str()']
+
+  on_send_success:
+    - logger.log: "Message delivered! Going to sleep."
+    - meshtastic.power_off:
+        id: mesh
+    - delay: 500ms
+    - deep_sleep.enter: deep_sleep_1
+
+  on_send_failed:
+    - logger.log: "Send failed - going to sleep."
+    - meshtastic.power_off:
+        id: mesh
+    - delay: 500ms
+    - deep_sleep.enter: deep_sleep_1
+
+binary_sensor:
+  - platform: meshtastic
+    name: "Meshtastic Ready"
+
+text_sensor:
+  - platform: meshtastic
+    name: "Meshtastic State"
