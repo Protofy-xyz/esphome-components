@@ -139,6 +139,8 @@ void MeshtasticComponent::power_on() {
   this->rx_state_ = RX_WAIT_START1;
   this->rx_pos_ = 0;
   this->my_node_num_ = 0;
+  this->my_long_name_.clear();
+  this->my_short_name_.clear();
   this->pending_packet_id_ = 0;
 }
 
@@ -152,6 +154,8 @@ void MeshtasticComponent::power_off() {
   this->state_ = State::OFF;
   this->pending_packet_id_ = 0;
   this->my_node_num_ = 0;
+  this->my_long_name_.clear();
+  this->my_short_name_.clear();
 }
 
 bool MeshtasticComponent::send_text(const std::string &message, uint32_t destination, uint8_t channel) {
@@ -345,6 +349,60 @@ void MeshtasticComponent::handle_from_radio_(const uint8_t *buf, size_t len) {
               this->skip_field_(buf, &pos, end, sub_wt);
             }
           }
+          pos = end;
+        } else {
+          this->skip_field_(buf, &pos, len, wire_type);
+        }
+        break;
+      }
+
+      case 4: {  // node_info (NodeInfo, length-delimited)
+        if (wire_type == WT_LENGTH) {
+          uint32_t sub_len = this->decode_varint_(buf, &pos, len);
+          size_t end = pos + sub_len;
+          uint32_t node_num = 0;
+          const uint8_t *user_data = nullptr;
+          size_t user_len = 0;
+
+          // Parse NodeInfo: num (field 1, varint), user (field 2, length-delimited)
+          while (pos < end) {
+            uint32_t sub_tag = this->decode_varint_(buf, &pos, end);
+            uint8_t sub_wt = sub_tag & 0x07;
+            uint32_t sub_fn = sub_tag >> 3;
+            if (sub_fn == 1 && sub_wt == WT_VARINT) {
+              node_num = this->decode_varint_(buf, &pos, end);
+            } else if (sub_fn == 2 && sub_wt == WT_LENGTH) {
+              user_len = this->decode_varint_(buf, &pos, end);
+              user_data = buf + pos;
+              pos += user_len;
+            } else {
+              this->skip_field_(buf, &pos, end, sub_wt);
+            }
+          }
+
+          // If this is our own node, extract long_name and short_name from User
+          if (node_num == this->my_node_num_ && this->my_node_num_ != 0 && user_data != nullptr) {
+            size_t upos = 0;
+            while (upos < user_len) {
+              uint32_t utag = this->decode_varint_(user_data, &upos, user_len);
+              uint8_t uwt = utag & 0x07;
+              uint32_t ufn = utag >> 3;
+              if (ufn == 2 && uwt == WT_LENGTH) {  // long_name
+                uint32_t slen = this->decode_varint_(user_data, &upos, user_len);
+                this->my_long_name_ = std::string(reinterpret_cast<const char *>(user_data + upos), slen);
+                upos += slen;
+                ESP_LOGI(TAG, "My long name: %s", this->my_long_name_.c_str());
+              } else if (ufn == 3 && uwt == WT_LENGTH) {  // short_name
+                uint32_t slen = this->decode_varint_(user_data, &upos, user_len);
+                this->my_short_name_ = std::string(reinterpret_cast<const char *>(user_data + upos), slen);
+                upos += slen;
+                ESP_LOGI(TAG, "My short name: %s", this->my_short_name_.c_str());
+              } else {
+                this->skip_field_(user_data, &upos, user_len, uwt);
+              }
+            }
+          }
+
           pos = end;
         } else {
           this->skip_field_(buf, &pos, len, wire_type);

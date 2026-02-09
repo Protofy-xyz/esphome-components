@@ -55,6 +55,8 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   State get_state() const { return state_; }
   bool is_ready() const { return state_ == State::READY; }
   uint32_t get_my_node_num() const { return my_node_num_; }
+  const std::string &get_my_long_name() const { return my_long_name_; }
+  const std::string &get_my_short_name() const { return my_short_name_; }
   uint32_t get_last_from_node() const { return last_from_node_; }
   uint8_t get_last_channel() const { return last_channel_; }
   uint32_t get_default_destination() const { return default_destination_; }
@@ -99,6 +101,8 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   uint32_t boot_start_{0};
   uint32_t config_nonce_{0};
   uint32_t my_node_num_{0};
+  std::string my_long_name_;
+  std::string my_short_name_;
   uint32_t pending_packet_id_{0};
   uint32_t pending_destination_{0};
   uint32_t last_from_node_{0};
