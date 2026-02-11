@@ -1,0 +1,44 @@
+# TFMini Plus LiDAR sensor — I2C mode
+# Board: Seeed XIAO ESP32S3
+#
+# Wiring:
+#   D9  (GPIO8) = I2C SDA -> TFMini Plus SDA (white wire)
+#   D10 (GPIO9) = I2C SCL -> TFMini Plus SCL (green/blue wire)
+#   TFMini VCC (red) = 5V, GND (black) = GND
+
+esphome:
+  name: tfmini-plus-test
+  friendly_name: TFMini Plus LiDAR
+
+esp32:
+  board: seeed_xiao_esp32s3
+  variant: esp32s3
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [tfmini_plus]
+
+i2c:
+  sda: GPIO8    # D9
+  scl: GPIO9    # D10
+  scan: false
+  frequency: 100kHz
+
+sensor:
+  - platform: tfmini_plus
+    address: 0x10
+    update_interval: 5s
+    distance:
+      name: "Distance"
+    strength:
+      name: "Strength"
+    temperature:
+      name: "Temperature"
