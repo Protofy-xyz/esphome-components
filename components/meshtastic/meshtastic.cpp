@@ -1,6 +1,10 @@
 #include "meshtastic.h"
 #include "esphome/core/log.h"
 
+#ifdef USE_ESP_IDF
+#include <esp_random.h>
+#endif
+
 namespace esphome {
 namespace meshtastic {
 
