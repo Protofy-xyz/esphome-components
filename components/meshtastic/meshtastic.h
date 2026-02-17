@@ -12,6 +12,7 @@
 #endif
 #include <string>
 #include <cstring>
+#include <vector>
 
 namespace esphome {
 namespace meshtastic {
@@ -21,8 +22,14 @@ enum class State : uint8_t {
   POWERING_ON,
   INITIALIZING,
   CONFIGURING,
+  APPLYING_CONFIG,
   READY,
   SENDING,
+};
+
+struct AdminMsg {
+  const uint8_t *data;
+  size_t len;
 };
 
 class MeshtasticComponent : public Component, public uart::UARTDevice {
@@ -39,6 +46,7 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   void set_default_destination(uint32_t dest) { default_destination_ = dest; }
   void set_default_channel(uint8_t ch) { default_channel_ = ch; }
   void set_enable_on_boot(bool en) { enable_on_boot_ = en; }
+  void set_configure_on_boot(bool v) { configure_on_boot_ = v; }
 #ifdef USE_BINARY_SENSOR
   void set_ready_sensor(binary_sensor::BinarySensor *s) { ready_sensor_ = s; }
 #endif
@@ -46,10 +54,20 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   void set_state_sensor(text_sensor::TextSensor *s) { state_sensor_ = s; }
 #endif
 
+  // Admin config message registration (called from generated code)
+  void add_config_admin_msg(const uint8_t *data, size_t len) {
+    config_admin_msgs_.push_back({data, len});
+  }
+  void set_channel_admin_msg(const uint8_t *data, size_t len) {
+    channel_admin_msg_ = {data, len};
+    has_channel_config_ = true;
+  }
+
   // Public API
   void power_on();
   void power_off();
   bool send_text(const std::string &message, uint32_t destination, uint8_t channel);
+  void apply_config();
 
   // Getters
   State get_state() const { return state_; }
@@ -78,6 +96,10 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   uint32_t generate_packet_id_();
   void publish_state_();
 
+  // Admin config helpers
+  void send_admin_message_(const uint8_t *admin_payload, size_t admin_len);
+  void send_next_config_msg_();
+
   // Protobuf encoding helpers
   size_t encode_varint_(uint8_t *buf, uint32_t value);
   size_t encode_field_varint_(uint8_t *buf, uint32_t field_num, uint32_t value);
@@ -95,6 +117,7 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   uint32_t default_destination_{0xFFFFFFFF};
   uint8_t default_channel_{0};
   bool enable_on_boot_{true};
+  bool configure_on_boot_{true};
 
   State state_{State::OFF};
   uint32_t state_start_{0};
@@ -108,6 +131,15 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   uint32_t last_from_node_{0};
   uint8_t last_channel_{0};
   uint16_t packet_id_counter_{0};
+
+  // Admin config state
+  std::vector<AdminMsg> config_admin_msgs_;
+  AdminMsg channel_admin_msg_{nullptr, 0};
+  bool has_channel_config_{false};
+  size_t config_msg_index_{0};
+  bool config_applied_{false};
+  // Phase: 0 = settings batch, 1 = waiting reboot after commit, 2 = channel
+  uint8_t config_phase_{0};
 
   // Serial receive state machine
   static const uint16_t MAX_PAYLOAD = 512;
@@ -201,6 +233,15 @@ template<typename... Ts> class PowerOffAction : public Action<Ts...> {
  public:
   explicit PowerOffAction(MeshtasticComponent *parent) : parent_(parent) {}
   void play(Ts... x) override { parent_->power_off(); }
+
+ protected:
+  MeshtasticComponent *parent_;
+};
+
+template<typename... Ts> class ApplyConfigAction : public Action<Ts...> {
+ public:
+  explicit ApplyConfigAction(MeshtasticComponent *parent) : parent_(parent) {}
+  void play(Ts... x) override { parent_->apply_config(); }
 
  protected:
   MeshtasticComponent *parent_;

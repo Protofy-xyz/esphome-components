@@ -23,6 +23,7 @@ static const uint8_t WT_32BIT = 5;
 // Meshtastic PortNum values
 static const uint32_t PORTNUM_TEXT_MESSAGE = 1;
 static const uint32_t PORTNUM_ROUTING = 5;
+static const uint32_t PORTNUM_ADMIN = 6;
 
 // Routing::Error
 static const uint32_t ROUTING_ERROR_NONE = 0;
@@ -76,7 +77,7 @@ void MeshtasticComponent::loop() {
 
     case State::CONFIGURING:
       this->process_serial_();
-      // process_serial_ may have changed state (config complete -> READY -> SENDING)
+      // process_serial_ may have changed state (config complete -> APPLYING_CONFIG or READY)
       if (this->state_ != State::CONFIGURING)
         break;
       if (now - this->boot_start_ > this->boot_timeout_) {
@@ -90,6 +91,80 @@ void MeshtasticComponent::loop() {
         this->state_ = State::INITIALIZING;
         this->state_start_ = now;
         this->send_wake_bytes_();
+      }
+      break;
+
+    case State::APPLYING_CONFIG:
+      this->process_serial_();
+      if (this->state_ != State::APPLYING_CONFIG)
+        break;
+
+      // Phase 0: sending settings batch (begin_edit + set_config/set_module + commit_edit)
+      if (this->config_phase_ == 0) {
+        // Send messages with 200ms spacing
+        if (now - this->state_start_ > 200) {
+          if (this->config_msg_index_ < this->config_admin_msgs_.size()) {
+            this->send_next_config_msg_();
+            this->state_start_ = now;
+          } else {
+            // All settings sent (including commit_edit), wait for flash write
+            ESP_LOGI(TAG, "All settings sent, waiting for commit to complete...");
+            this->config_phase_ = 1;
+            this->state_start_ = now;
+          }
+        }
+      }
+      // Phase 1: wait for commit_edit_settings to finish writing to flash
+      else if (this->config_phase_ == 1) {
+        // commit_edit saves settings to flash without needing a reboot.
+        // If the device does reboot (some firmware versions), the reboot
+        // handler will detect it and re-init. Otherwise, proceed after 2s.
+        if (now - this->state_start_ > 2000) {
+          if (this->has_channel_config_) {
+            ESP_LOGI(TAG, "Settings committed, sending channel config...");
+            this->config_phase_ = 2;
+            this->state_start_ = now;
+          } else {
+            ESP_LOGI(TAG, "Settings committed, sending reboot...");
+            this->config_phase_ = 3;
+            this->state_start_ = now;
+          }
+        }
+      }
+      // Phase 2: sending channel config
+      else if (this->config_phase_ == 2) {
+        if (now - this->state_start_ > 500) {
+          if (this->has_channel_config_) {
+            ESP_LOGI(TAG, "Sending channel configuration...");
+            this->send_admin_message_(this->channel_admin_msg_.data, this->channel_admin_msg_.len);
+          }
+          this->config_phase_ = 3;
+          this->state_start_ = now;
+        }
+      }
+      // Phase 3: send reboot to persist all config changes
+      else if (this->config_phase_ == 3) {
+        if (now - this->state_start_ > 500) {
+          ESP_LOGI(TAG, "Sending reboot to apply configuration...");
+          // AdminMessage { reboot_seconds = 2 } -> field 97, varint
+          uint8_t reboot_msg[4];
+          size_t rlen = this->encode_field_varint_(reboot_msg, 97, 2);
+          this->send_admin_message_(reboot_msg, rlen);
+          this->config_phase_ = 4;
+          this->state_start_ = now;
+        }
+      }
+      // Phase 4: wait for reboot, then ready
+      else if (this->config_phase_ == 4) {
+        // Reboot handler (case 8) or config_complete handler (case 7)
+        // will detect the reboot and transition us.
+        // If no reboot after 15s, go ready anyway.
+        if (now - this->state_start_ > 15000) {
+          ESP_LOGW(TAG, "No reboot detected after config, proceeding...");
+          this->config_applied_ = true;
+          this->state_ = State::READY;
+          this->on_ready_callbacks_.call();
+        }
       }
       break;
 
@@ -121,6 +196,12 @@ void MeshtasticComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  ACK Timeout: %ums", this->ack_timeout_);
   ESP_LOGCONFIG(TAG, "  Default Destination: 0x%08X", this->default_destination_);
   ESP_LOGCONFIG(TAG, "  Default Channel: %u", this->default_channel_);
+  if (!this->config_admin_msgs_.empty()) {
+    ESP_LOGCONFIG(TAG, "  Admin config messages: %u settings + %s (on_boot=%s)",
+                  this->config_admin_msgs_.size(),
+                  this->has_channel_config_ ? "channel" : "no channel",
+                  this->configure_on_boot_ ? "yes" : "no");
+  }
 }
 
 // ---- Public API ----
@@ -146,6 +227,9 @@ void MeshtasticComponent::power_on() {
   this->my_long_name_.clear();
   this->my_short_name_.clear();
   this->pending_packet_id_ = 0;
+  // Reset config state
+  this->config_msg_index_ = 0;
+  this->config_phase_ = 0;
 }
 
 void MeshtasticComponent::power_off() {
@@ -210,6 +294,63 @@ bool MeshtasticComponent::send_text(const std::string &message, uint32_t destina
   return true;
 }
 
+// ---- Admin config helpers ----
+
+void MeshtasticComponent::send_admin_message_(const uint8_t *admin_payload, size_t admin_len) {
+  // Wrap admin payload in: Data { portnum=ADMIN(6), payload=admin_payload }
+  uint8_t data_buf[256];
+  size_t data_len = 0;
+  data_len += this->encode_field_varint_(data_buf + data_len, 1, PORTNUM_ADMIN);
+  data_len += this->encode_field_bytes_(data_buf + data_len, 2, admin_payload, admin_len);
+
+  // MeshPacket { to=my_node_num, channel=0, decoded=data, id=..., hop_limit=3, want_ack=true }
+  uint8_t pkt_buf[300];
+  size_t pkt_len = 0;
+  pkt_len += this->encode_field_fixed32_(pkt_buf + pkt_len, 2, this->my_node_num_);  // to self
+  pkt_len += this->encode_field_varint_(pkt_buf + pkt_len, 3, 0);                     // channel 0
+  pkt_len += this->encode_field_bytes_(pkt_buf + pkt_len, 4, data_buf, data_len);
+  uint32_t pkt_id = this->generate_packet_id_();
+  pkt_len += this->encode_field_fixed32_(pkt_buf + pkt_len, 6, pkt_id);
+  pkt_len += this->encode_field_varint_(pkt_buf + pkt_len, 9, 3);   // hop_limit
+  pkt_len += this->encode_field_varint_(pkt_buf + pkt_len, 10, 1);  // want_ack
+
+  // ToRadio { packet (field 1) = pkt }
+  uint8_t toradio_buf[320];
+  size_t toradio_len = 0;
+  toradio_len += this->encode_field_bytes_(toradio_buf + toradio_len, 1, pkt_buf, pkt_len);
+
+  this->send_framed_(toradio_buf, toradio_len);
+  ESP_LOGD(TAG, "Sent admin message (%u bytes, pkt_id=0x%08X)", admin_len, pkt_id);
+}
+
+void MeshtasticComponent::send_next_config_msg_() {
+  if (this->config_msg_index_ >= this->config_admin_msgs_.size())
+    return;
+
+  const auto &msg = this->config_admin_msgs_[this->config_msg_index_];
+  ESP_LOGI(TAG, "Sending config message %u/%u...", this->config_msg_index_ + 1,
+           this->config_admin_msgs_.size());
+  this->send_admin_message_(msg.data, msg.len);
+  this->config_msg_index_++;
+}
+
+void MeshtasticComponent::apply_config() {
+  if (this->config_admin_msgs_.empty()) {
+    ESP_LOGW(TAG, "No admin config messages to apply");
+    return;
+  }
+  if (this->my_node_num_ == 0) {
+    ESP_LOGW(TAG, "Cannot apply config - node number not known yet");
+    return;
+  }
+  ESP_LOGI(TAG, "Applying admin configuration on demand...");
+  this->config_msg_index_ = 0;
+  this->config_phase_ = 0;
+  this->config_applied_ = false;
+  this->state_ = State::APPLYING_CONFIG;
+  this->state_start_ = millis();
+}
+
 // ---- Internal methods ----
 
 void MeshtasticComponent::publish_state_() {
@@ -225,6 +366,7 @@ void MeshtasticComponent::publish_state_() {
       case State::POWERING_ON: s = "Booting"; break;
       case State::INITIALIZING: s = "Initializing"; break;
       case State::CONFIGURING: s = "Configuring"; break;
+      case State::APPLYING_CONFIG: s = "Applying Config"; break;
       case State::READY: s = "Ready"; break;
       case State::SENDING: s = "Sending"; break;
       default: s = "Unknown"; break;
@@ -418,9 +560,38 @@ void MeshtasticComponent::handle_from_radio_(const uint8_t *buf, size_t len) {
         if (wire_type == WT_VARINT) {
           uint32_t complete_id = this->decode_varint_(buf, &pos, len);
           if (complete_id == this->config_nonce_ && this->state_ == State::CONFIGURING) {
-            ESP_LOGI(TAG, "Config complete - device ready");
-            this->state_ = State::READY;
-            this->on_ready_callbacks_.call();
+            // If we have admin config to apply and haven't applied it yet, go to APPLYING_CONFIG
+            if (!this->config_admin_msgs_.empty() && !this->config_applied_ && this->configure_on_boot_) {
+              ESP_LOGI(TAG, "Config complete - applying admin configuration...");
+              this->state_ = State::APPLYING_CONFIG;
+              this->state_start_ = millis();
+              this->config_msg_index_ = 0;
+              this->config_phase_ = 0;
+            } else {
+              ESP_LOGI(TAG, "Config complete - device ready");
+              this->state_ = State::READY;
+              this->on_ready_callbacks_.call();
+            }
+          }
+          // Handle config_complete after reboot during APPLYING_CONFIG
+          else if (complete_id != 0 && this->state_ == State::APPLYING_CONFIG) {
+            if (this->config_phase_ == 1) {
+              ESP_LOGI(TAG, "Device rebooted and ready after settings commit");
+              if (this->has_channel_config_) {
+                this->config_phase_ = 2;
+                this->state_start_ = millis();
+              } else {
+                // No channel config — send reboot to apply settings
+                ESP_LOGI(TAG, "No channel config, sending reboot to apply...");
+                this->config_phase_ = 3;
+                this->state_start_ = millis();
+              }
+            } else if (this->config_phase_ == 4) {
+              ESP_LOGI(TAG, "Device rebooted - all config applied");
+              this->config_applied_ = true;
+              this->state_ = State::READY;
+              this->on_ready_callbacks_.call();
+            }
           }
         } else {
           this->skip_field_(buf, &pos, len, wire_type);
@@ -431,9 +602,22 @@ void MeshtasticComponent::handle_from_radio_(const uint8_t *buf, size_t len) {
         if (wire_type == WT_VARINT) {
           uint32_t rebooted = this->decode_varint_(buf, &pos, len);
           if (rebooted) {
-            ESP_LOGW(TAG, "Device reboot detected, re-initializing");
-            this->state_ = State::INITIALIZING;
-            this->state_start_ = millis();
+            if (this->state_ == State::APPLYING_CONFIG &&
+                (this->config_phase_ == 1 || this->config_phase_ == 4)) {
+              // Expected reboot after settings commit or channel config — re-init
+              ESP_LOGI(TAG, "Device rebooted (phase %u), re-initializing...", this->config_phase_);
+              // Stay in APPLYING_CONFIG at current phase
+              // Re-send wake + want_config to get config_complete_id
+              this->send_wake_bytes_();
+              this->config_nonce_ = static_cast<uint32_t>(esp_random()) | 1;
+              uint8_t cfg_buf[10];
+              size_t cfg_len = this->encode_field_varint_(cfg_buf, 3, this->config_nonce_);
+              this->send_framed_(cfg_buf, cfg_len);
+            } else {
+              ESP_LOGW(TAG, "Device reboot detected, re-initializing");
+              this->state_ = State::INITIALIZING;
+              this->state_start_ = millis();
+            }
           }
         } else {
           this->skip_field_(buf, &pos, len, wire_type);
@@ -444,7 +628,6 @@ void MeshtasticComponent::handle_from_radio_(const uint8_t *buf, size_t len) {
         if (wire_type == WT_LENGTH) {
           uint32_t sub_len = this->decode_varint_(buf, &pos, len);
           size_t end = pos + sub_len;
-          // Parse QueueStatus: res(1,varint), free(2,varint), maxlen(3,varint), mesh_packet_id(4,varint)
           int32_t res = 0;
           uint32_t mesh_packet_id = 0;
           while (pos < end) {
@@ -462,13 +645,11 @@ void MeshtasticComponent::handle_from_radio_(const uint8_t *buf, size_t len) {
           ESP_LOGD(TAG, "QueueStatus: res=%d packet_id=0x%08X (pending=0x%08X)", res, mesh_packet_id, this->pending_packet_id_);
           if (mesh_packet_id != 0 && mesh_packet_id == this->pending_packet_id_) {
             if (res != 0) {
-              // Queue rejected — fail immediately
               ESP_LOGW(TAG, "Message queue failed (res=%d)", res);
               this->pending_packet_id_ = 0;
               this->state_ = State::READY;
               this->on_send_failed_callbacks_.call();
             } else {
-              // Message queued, wait for routing ACK (works for both broadcast and unicast)
               ESP_LOGD(TAG, "Message queued, waiting for routing confirmation...");
             }
           }
