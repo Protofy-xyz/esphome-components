@@ -351,6 +351,117 @@ void MeshtasticComponent::apply_config() {
   this->state_start_ = millis();
 }
 
+// ---- Debug config logging ----
+
+// Field name lookup for human-readable output
+static const char *field_name_(const char *section, uint32_t num) {
+  if (strcmp(section, "lora") == 0) {
+    switch (num) {
+      case 1: return "use_preset"; case 2: return "modem_preset"; case 3: return "bandwidth";
+      case 4: return "spread_factor"; case 5: return "coding_rate"; case 7: return "region";
+      case 8: return "hop_limit"; case 9: return "tx_enabled"; case 10: return "tx_power";
+      case 11: return "channel_num"; case 12: return "override_duty_cycle";
+      case 104: return "ignore_mqtt"; case 105: return "config_ok_to_mqtt";
+    }
+  } else if (strcmp(section, "bluetooth") == 0) {
+    switch (num) { case 1: return "enabled"; case 2: return "mode"; case 3: return "fixed_pin"; }
+  } else if (strcmp(section, "network") == 0) {
+    switch (num) {
+      case 1: return "wifi_enabled"; case 3: return "wifi_ssid"; case 4: return "wifi_psk";
+      case 5: return "ntp_server"; case 6: return "eth_enabled";
+    }
+  } else if (strcmp(section, "mqtt") == 0) {
+    switch (num) {
+      case 1: return "enabled"; case 2: return "address"; case 3: return "username";
+      case 4: return "password"; case 5: return "encryption_enabled";
+      case 6: return "json_enabled"; case 7: return "tls_enabled"; case 8: return "root";
+    }
+  } else if (strcmp(section, "serial") == 0) {
+    switch (num) {
+      case 1: return "enabled"; case 2: return "echo"; case 3: return "rxd"; case 4: return "txd";
+      case 5: return "baud"; case 7: return "mode";
+    }
+  } else if (strcmp(section, "ch_settings") == 0) {
+    switch (num) {
+      case 2: return "psk"; case 3: return "name"; case 5: return "uplink_enabled";
+      case 6: return "downlink_enabled";
+    }
+  } else if (strcmp(section, "device") == 0) {
+    switch (num) {
+      case 1: return "role"; case 6: return "rebroadcast_mode";
+      case 7: return "node_info_broadcast_secs"; case 11: return "tzdef";
+    }
+  } else if (strcmp(section, "power") == 0) {
+    switch (num) {
+      case 4: return "sds_secs"; case 6: return "min_wake_secs";
+      case 7: return "ls_secs"; case 8: return "wait_bluetooth_secs";
+    }
+  }
+  return nullptr;
+}
+
+void MeshtasticComponent::log_proto_fields_(const char *label, const uint8_t *buf, size_t len) {
+  size_t pos = 0;
+  while (pos < len) {
+    uint32_t tag = this->decode_varint_(buf, &pos, len);
+    uint8_t wire_type = tag & 0x07;
+    uint32_t field_num = tag >> 3;
+    const char *name = field_name_(label, field_num);
+
+    if (wire_type == WT_VARINT) {
+      uint32_t val = this->decode_varint_(buf, &pos, len);
+      if (name)
+        ESP_LOGI(TAG, "  %s = %u", name, val);
+      else
+        ESP_LOGI(TAG, "  %s.%u = %u", label, field_num, val);
+    } else if (wire_type == WT_LENGTH) {
+      uint32_t sub_len = this->decode_varint_(buf, &pos, len);
+      if (pos + sub_len > len) break;
+      bool is_text = sub_len > 0 && sub_len < 128;
+      for (size_t i = 0; i < sub_len && is_text; i++) {
+        if (buf[pos + i] < 0x20 || buf[pos + i] > 0x7E) is_text = false;
+      }
+      if (is_text) {
+        std::string s(reinterpret_cast<const char *>(buf + pos), sub_len);
+        if (name)
+          ESP_LOGI(TAG, "  %s = \"%s\"", name, s.c_str());
+        else
+          ESP_LOGI(TAG, "  %s.%u = \"%s\"", label, field_num, s.c_str());
+      } else {
+        if (name)
+          ESP_LOGI(TAG, "  %s = (%u bytes)", name, sub_len);
+        else
+          ESP_LOGI(TAG, "  %s.%u = (%u bytes)", label, field_num, sub_len);
+      }
+      pos += sub_len;
+    } else if (wire_type == WT_32BIT) {
+      uint32_t val = this->decode_fixed32_(buf, &pos);
+      if (name)
+        ESP_LOGI(TAG, "  %s = 0x%08X", name, val);
+      else
+        ESP_LOGI(TAG, "  %s.%u = 0x%08X", label, field_num, val);
+    } else {
+      this->skip_field_(buf, &pos, len, wire_type);
+    }
+  }
+}
+
+void MeshtasticComponent::dump_radio_config() {
+  if (this->state_ == State::OFF || this->state_ == State::POWERING_ON) {
+    ESP_LOGW(TAG, "Cannot dump config - device is off");
+    return;
+  }
+  // Send want_config_id to trigger a full config dump from the device.
+  // The device will respond with all Config, ModuleConfig, and Channel messages.
+  // Our FromRadio handlers (cases 5, 6, 9) will log everything.
+  // Using nonce=0 so config_complete_id won't match and won't trigger state changes.
+  ESP_LOGI(TAG, "=== Requesting radio config dump ===");
+  this->dump_config_active_ = true;
+  uint8_t buf[10];
+  size_t len = this->encode_field_varint_(buf, 3, 0xDEAD);  // dummy nonce
+  this->send_framed_(buf, len);
+}
+
 // ---- Internal methods ----
 
 void MeshtasticComponent::publish_state_() {
@@ -556,9 +667,86 @@ void MeshtasticComponent::handle_from_radio_(const uint8_t *buf, size_t len) {
         break;
       }
 
+      case 5: {  // config (Config, length-delimited)
+        if (wire_type == WT_LENGTH) {
+          uint32_t sub_len = this->decode_varint_(buf, &pos, len);
+          if (this->dump_config_active_) {
+            size_t end = pos + sub_len;
+            static const char *const CFG_NAMES[] = {
+              "?", "device", "position", "power", "network",
+              "display", "lora", "bluetooth", "security", "sessionkey", "device_ui"
+            };
+            while (pos < end) {
+              uint32_t sub_tag = this->decode_varint_(buf, &pos, end);
+              uint8_t sub_wt = sub_tag & 0x07;
+              uint32_t sub_fn = sub_tag >> 3;
+              if (sub_wt == WT_LENGTH) {
+                uint32_t cfg_len = this->decode_varint_(buf, &pos, end);
+                const char *name = sub_fn <= 10 ? CFG_NAMES[sub_fn] : "unknown";
+                ESP_LOGI(TAG, "Config.%s:", name);
+                if (pos + cfg_len <= end) {
+                  this->log_proto_fields_(name, buf + pos, cfg_len);
+                }
+                pos += cfg_len;
+              } else {
+                this->skip_field_(buf, &pos, end, sub_wt);
+              }
+            }
+            pos = end;
+          } else {
+            pos += sub_len;
+          }
+        } else {
+          this->skip_field_(buf, &pos, len, wire_type);
+        }
+        break;
+      }
+
+      case 6: {  // module_config (ModuleConfig, length-delimited)
+        if (wire_type == WT_LENGTH) {
+          uint32_t sub_len = this->decode_varint_(buf, &pos, len);
+          if (this->dump_config_active_) {
+            size_t end = pos + sub_len;
+            static const char *const MOD_NAMES[] = {
+              "?", "mqtt", "serial", "ext_notif", "store_fwd",
+              "range_test", "telemetry", "canned_msg", "audio",
+              "remote_hw", "neighbor_info", "ambient_light", "detection_sensor",
+              "paxcounter", "statusmessage", "traffic_mgmt"
+            };
+            while (pos < end) {
+              uint32_t sub_tag = this->decode_varint_(buf, &pos, end);
+              uint8_t sub_wt = sub_tag & 0x07;
+              uint32_t sub_fn = sub_tag >> 3;
+              if (sub_wt == WT_LENGTH) {
+                uint32_t cfg_len = this->decode_varint_(buf, &pos, end);
+                const char *name = sub_fn <= 15 ? MOD_NAMES[sub_fn] : "unknown";
+                ESP_LOGI(TAG, "ModuleConfig.%s:", name);
+                if (pos + cfg_len <= end) {
+                  this->log_proto_fields_(name, buf + pos, cfg_len);
+                }
+                pos += cfg_len;
+              } else {
+                this->skip_field_(buf, &pos, end, sub_wt);
+              }
+            }
+            pos = end;
+          } else {
+            pos += sub_len;
+          }
+        } else {
+          this->skip_field_(buf, &pos, len, wire_type);
+        }
+        break;
+      }
+
       case 7:  // config_complete_id (varint)
         if (wire_type == WT_VARINT) {
           uint32_t complete_id = this->decode_varint_(buf, &pos, len);
+          // End of dump_radio_config output
+          if (this->dump_config_active_) {
+            this->dump_config_active_ = false;
+            ESP_LOGI(TAG, "=== End radio config dump ===");
+          }
           if (complete_id == this->config_nonce_ && this->state_ == State::CONFIGURING) {
             // If we have admin config to apply and haven't applied it yet, go to APPLYING_CONFIG
             if (!this->config_admin_msgs_.empty() && !this->config_applied_ && this->configure_on_boot_) {
@@ -623,6 +811,46 @@ void MeshtasticComponent::handle_from_radio_(const uint8_t *buf, size_t len) {
           this->skip_field_(buf, &pos, len, wire_type);
         }
         break;
+
+      case 9: {  // channel (Channel, length-delimited)
+        if (wire_type == WT_LENGTH) {
+          uint32_t sub_len = this->decode_varint_(buf, &pos, len);
+          if (this->dump_config_active_) {
+            size_t end = pos + sub_len;
+            uint32_t ch_index = 0, ch_role = 0;
+            const uint8_t *settings_data = nullptr;
+            size_t settings_len = 0;
+            while (pos < end) {
+              uint32_t sub_tag = this->decode_varint_(buf, &pos, end);
+              uint8_t sub_wt = sub_tag & 0x07;
+              uint32_t sub_fn = sub_tag >> 3;
+              if (sub_fn == 1 && sub_wt == WT_VARINT) {
+                ch_index = this->decode_varint_(buf, &pos, end);
+              } else if (sub_fn == 2 && sub_wt == WT_LENGTH) {
+                settings_len = this->decode_varint_(buf, &pos, end);
+                settings_data = buf + pos;
+                pos += settings_len;
+              } else if (sub_fn == 3 && sub_wt == WT_VARINT) {
+                ch_role = this->decode_varint_(buf, &pos, end);
+              } else {
+                this->skip_field_(buf, &pos, end, sub_wt);
+              }
+            }
+            static const char *const ROLE_NAMES[] = {"DISABLED", "PRIMARY", "SECONDARY"};
+            const char *role_name = ch_role <= 2 ? ROLE_NAMES[ch_role] : "?";
+            ESP_LOGI(TAG, "Channel %u (%s):", ch_index, role_name);
+            if (settings_data != nullptr && settings_len > 0) {
+              this->log_proto_fields_("ch_settings", settings_data, settings_len);
+            }
+            pos = end;
+          } else {
+            pos += sub_len;
+          }
+        } else {
+          this->skip_field_(buf, &pos, len, wire_type);
+        }
+        break;
+      }
 
       case 11: {  // queueStatus (QueueStatus, length-delimited)
         if (wire_type == WT_LENGTH) {

@@ -41,6 +41,7 @@ SendTextAction = meshtastic_ns.class_("SendTextAction", automation.Action)
 PowerOnAction = meshtastic_ns.class_("PowerOnAction", automation.Action)
 PowerOffAction = meshtastic_ns.class_("PowerOffAction", automation.Action)
 ApplyConfigAction = meshtastic_ns.class_("ApplyConfigAction", automation.Action)
+DumpRadioConfigAction = meshtastic_ns.class_("DumpRadioConfigAction", automation.Action)
 
 # --- Protobuf encoding helpers (used at codegen time) ---
 
@@ -124,6 +125,20 @@ def _build_config_lora(cfg):
         payload += _encode_field_bool(104, cfg["ignore_mqtt"])
     if "config_ok_to_mqtt" in cfg:
         payload += _encode_field_bool(105, cfg["config_ok_to_mqtt"])
+    return payload
+
+
+def _build_config_network(cfg):
+    """Build Config.NetworkConfig protobuf bytes."""
+    payload = b""
+    if "wifi_enabled" in cfg:
+        payload += _encode_field_bool(1, cfg["wifi_enabled"])
+    if "wifi_ssid" in cfg:
+        payload += _encode_field_string(3, cfg["wifi_ssid"])
+    if "wifi_psk" in cfg:
+        payload += _encode_field_string(4, cfg["wifi_psk"])
+    if "eth_enabled" in cfg:
+        payload += _encode_field_bool(6, cfg["eth_enabled"])
     return payload
 
 
@@ -240,6 +255,13 @@ CONFIGURE_LORA_SCHEMA = cv.Schema({
     cv.Optional("config_ok_to_mqtt"): cv.boolean,
 })
 
+CONFIGURE_NETWORK_SCHEMA = cv.Schema({
+    cv.Optional("wifi_enabled"): cv.boolean,
+    cv.Optional("wifi_ssid"): cv.string,
+    cv.Optional("wifi_psk"): cv.string,
+    cv.Optional("eth_enabled"): cv.boolean,
+})
+
 CONFIGURE_MQTT_SCHEMA = cv.Schema({
     cv.Optional("enabled"): cv.boolean,
     cv.Optional("address"): cv.string,
@@ -270,6 +292,7 @@ CONFIGURE_CHANNEL_SCHEMA = cv.Schema({
 CONFIGURE_SCHEMA = cv.Schema({
     cv.Optional("apply_on_boot", default=True): cv.boolean,
     cv.Optional("bluetooth"): CONFIGURE_BLUETOOTH_SCHEMA,
+    cv.Optional("network"): CONFIGURE_NETWORK_SCHEMA,
     cv.Optional("lora"): CONFIGURE_LORA_SCHEMA,
     cv.Optional("mqtt"): CONFIGURE_MQTT_SCHEMA,
     cv.Optional("serial"): CONFIGURE_SERIAL_SCHEMA,
@@ -333,6 +356,11 @@ async def to_code(config):
 
         # begin_edit_settings
         admin_msgs.append(_wrap_admin_begin_edit())
+
+        # Config.NetworkConfig (Config field 4)
+        if "network" in conf:
+            net = _build_config_network(conf["network"])
+            admin_msgs.append(_wrap_admin_set_config(4, net))
 
         # Config.LoRaConfig (Config field 6)
         if "lora" in conf:
@@ -467,6 +495,22 @@ APPLY_CONFIG_SCHEMA = cv.Schema(
     "meshtastic.apply_config", ApplyConfigAction, APPLY_CONFIG_SCHEMA
 )
 async def apply_config_to_code(config, action_id, template_arg, args):
+    parent = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, parent)
+    return var
+
+
+DUMP_RADIO_CONFIG_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.use_id(MeshtasticComponent),
+    }
+)
+
+
+@automation.register_action(
+    "meshtastic.dump_radio_config", DumpRadioConfigAction, DUMP_RADIO_CONFIG_SCHEMA
+)
+async def dump_radio_config_to_code(config, action_id, template_arg, args):
     parent = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, parent)
     return var

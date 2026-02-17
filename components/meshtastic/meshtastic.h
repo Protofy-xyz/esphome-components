@@ -68,6 +68,7 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   void power_off();
   bool send_text(const std::string &message, uint32_t destination, uint8_t channel);
   void apply_config();
+  void dump_radio_config();
 
   // Getters
   State get_state() const { return state_; }
@@ -99,6 +100,9 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   // Admin config helpers
   void send_admin_message_(const uint8_t *admin_payload, size_t admin_len);
   void send_next_config_msg_();
+
+  // Debug config logging
+  void log_proto_fields_(const char *label, const uint8_t *buf, size_t len);
 
   // Protobuf encoding helpers
   size_t encode_varint_(uint8_t *buf, uint32_t value);
@@ -140,6 +144,7 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   bool config_applied_{false};
   // Phase: 0 = settings batch, 1 = waiting reboot after commit, 2 = channel
   uint8_t config_phase_{0};
+  bool dump_config_active_{false};
 
   // Serial receive state machine
   static const uint16_t MAX_PAYLOAD = 512;
@@ -242,6 +247,15 @@ template<typename... Ts> class ApplyConfigAction : public Action<Ts...> {
  public:
   explicit ApplyConfigAction(MeshtasticComponent *parent) : parent_(parent) {}
   void play(Ts... x) override { parent_->apply_config(); }
+
+ protected:
+  MeshtasticComponent *parent_;
+};
+
+template<typename... Ts> class DumpRadioConfigAction : public Action<Ts...> {
+ public:
+  explicit DumpRadioConfigAction(MeshtasticComponent *parent) : parent_(parent) {}
+  void play(Ts... x) override { parent_->dump_radio_config(); }
 
  protected:
   MeshtasticComponent *parent_;
