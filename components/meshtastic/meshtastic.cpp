@@ -22,6 +22,7 @@ static const uint8_t WT_32BIT = 5;
 
 // Meshtastic PortNum values
 static const uint32_t PORTNUM_TEXT_MESSAGE = 1;
+static const uint32_t PORTNUM_NODEINFO_APP = 4;
 static const uint32_t PORTNUM_ROUTING = 5;
 static const uint32_t PORTNUM_ADMIN = 6;
 
@@ -291,6 +292,63 @@ bool MeshtasticComponent::send_text(const std::string &message, uint32_t destina
   this->pending_destination_ = destination;
   this->state_ = State::SENDING;
   this->state_start_ = millis();
+  return true;
+}
+
+bool MeshtasticComponent::send_nodeinfo() {
+  if (this->state_ != State::READY) {
+    ESP_LOGW(TAG, "Cannot send nodeinfo, not ready (state=%d)", static_cast<int>(this->state_));
+    return false;
+  }
+  if (this->my_node_num_ == 0) {
+    ESP_LOGW(TAG, "Cannot send nodeinfo, node number not known");
+    return false;
+  }
+
+  // Build User protobuf
+  // field 1: id (string) "!XXXXXXXX", field 2: long_name, field 3: short_name
+  char id_str[12];
+  snprintf(id_str, sizeof(id_str), "!%08x", this->my_node_num_);
+
+  uint8_t user_buf[128];
+  size_t user_len = 0;
+  user_len += this->encode_field_bytes_(user_buf + user_len, 1,
+    reinterpret_cast<const uint8_t *>(id_str), strlen(id_str));
+  if (!this->my_long_name_.empty()) {
+    user_len += this->encode_field_bytes_(user_buf + user_len, 2,
+      reinterpret_cast<const uint8_t *>(this->my_long_name_.c_str()), this->my_long_name_.length());
+  }
+  if (!this->my_short_name_.empty()) {
+    user_len += this->encode_field_bytes_(user_buf + user_len, 3,
+      reinterpret_cast<const uint8_t *>(this->my_short_name_.c_str()), this->my_short_name_.length());
+  }
+
+  // Encode Data: portnum=NODEINFO_APP(4), payload=User bytes
+  uint8_t data_buf[192];
+  size_t data_len = 0;
+  data_len += this->encode_field_varint_(data_buf + data_len, 1, PORTNUM_NODEINFO_APP);
+  data_len += this->encode_field_bytes_(data_buf + data_len, 2, user_buf, user_len);
+
+  // Encode MeshPacket: broadcast
+  uint32_t packet_id = this->generate_packet_id_();
+  uint8_t pkt_buf[256];
+  size_t pkt_len = 0;
+  pkt_len += this->encode_field_fixed32_(pkt_buf + pkt_len, 2, 0xFFFFFFFF);  // to (broadcast)
+  pkt_len += this->encode_field_varint_(pkt_buf + pkt_len, 3, 0);             // channel 0
+  pkt_len += this->encode_field_bytes_(pkt_buf + pkt_len, 4, data_buf, data_len);
+  pkt_len += this->encode_field_fixed32_(pkt_buf + pkt_len, 6, packet_id);
+  pkt_len += this->encode_field_varint_(pkt_buf + pkt_len, 9, 3);             // hop_limit
+  pkt_len += this->encode_field_varint_(pkt_buf + pkt_len, 11, 70);           // priority = RELIABLE
+
+  // ToRadio: packet (field 1)
+  uint8_t toradio_buf[280];
+  size_t toradio_len = 0;
+  toradio_len += this->encode_field_bytes_(toradio_buf + toradio_len, 1, pkt_buf, pkt_len);
+
+  this->send_framed_(toradio_buf, toradio_len);
+
+  ESP_LOGI(TAG, "Sent nodeinfo broadcast (id=0x%08X, long=%s, short=%s)",
+           packet_id, this->my_long_name_.c_str(), this->my_short_name_.c_str());
   return true;
 }
 

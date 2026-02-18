@@ -38,6 +38,7 @@ SendFailedTrigger = meshtastic_ns.class_(
 
 # Actions
 SendTextAction = meshtastic_ns.class_("SendTextAction", automation.Action)
+SendNodeInfoAction = meshtastic_ns.class_("SendNodeInfoAction", automation.Action)
 PowerOnAction = meshtastic_ns.class_("PowerOnAction", automation.Action)
 PowerOffAction = meshtastic_ns.class_("PowerOffAction", automation.Action)
 ApplyConfigAction = meshtastic_ns.class_("ApplyConfigAction", automation.Action)
@@ -511,6 +512,22 @@ DUMP_RADIO_CONFIG_SCHEMA = cv.Schema(
     "meshtastic.dump_radio_config", DumpRadioConfigAction, DUMP_RADIO_CONFIG_SCHEMA
 )
 async def dump_radio_config_to_code(config, action_id, template_arg, args):
+    parent = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, parent)
+    return var
+
+
+SEND_NODEINFO_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.use_id(MeshtasticComponent),
+    }
+)
+
+
+@automation.register_action(
+    "meshtastic.send_nodeinfo", SendNodeInfoAction, SEND_NODEINFO_SCHEMA
+)
+async def send_nodeinfo_to_code(config, action_id, template_arg, args):
     parent = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, parent)
     return var

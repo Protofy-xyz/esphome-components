@@ -67,6 +67,7 @@ class MeshtasticComponent : public Component, public uart::UARTDevice {
   void power_on();
   void power_off();
   bool send_text(const std::string &message, uint32_t destination, uint8_t channel);
+  bool send_nodeinfo();
   void apply_config();
   void dump_radio_config();
 
@@ -247,6 +248,15 @@ template<typename... Ts> class ApplyConfigAction : public Action<Ts...> {
  public:
   explicit ApplyConfigAction(MeshtasticComponent *parent) : parent_(parent) {}
   void play(Ts... x) override { parent_->apply_config(); }
+
+ protected:
+  MeshtasticComponent *parent_;
+};
+
+template<typename... Ts> class SendNodeInfoAction : public Action<Ts...> {
+ public:
+  explicit SendNodeInfoAction(MeshtasticComponent *parent) : parent_(parent) {}
+  void play(Ts... x) override { parent_->send_nodeinfo(); }
 
  protected:
   MeshtasticComponent *parent_;
