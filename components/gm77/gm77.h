@@ -37,6 +37,7 @@ namespace esphome
     protected:
       void process_data(const std::string &data);
       CallbackManager<void()> on_tag_callbacks;
+      std::string receive_buffer_;
     };
 
     extern GM77Component *controller;

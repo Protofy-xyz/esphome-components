@@ -41,26 +41,18 @@ void GM77Component::setup() {
 }
 
 void GM77Component::loop() {
-  // Verifica si hay datos disponibles en la UART
-  if (this->available()) {
-    std::string received_data;
-    
-    // Lee los datos de la UART
-    while (this->available()) {
-      int byte_read = this->read();                   // UARTDevice::read() returns int/uint8_t depending on core
-      char c = static_cast<char>(byte_read);
-      received_data.push_back(c);
+  while (this->available()) {
+    char c = static_cast<char>(this->read());
 
-      if (c == '\r') {
-        trim_inplace(received_data);
-        if (!received_data.empty()) {
-          ESP_LOGD(TAG, "Data received: %s", received_data.c_str());
-          this->process_data(received_data);
-        } else {
-          ESP_LOGD(TAG, "Received invalid data (empty or whitespace), skipping");
-        }
-        received_data.clear();
+    if (c == '\r' || c == '\n') {
+      trim_inplace(this->receive_buffer_);
+      if (!this->receive_buffer_.empty()) {
+        ESP_LOGD(TAG, "Data received: %s", this->receive_buffer_.c_str());
+        this->process_data(this->receive_buffer_);
       }
+      this->receive_buffer_.clear();
+    } else {
+      this->receive_buffer_.push_back(c);
     }
   }
 }
