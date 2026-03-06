@@ -1,0 +1,102 @@
+esphome:
+  name: sd-card-spi-basic
+  comment: "SD card read/write example for XIAO ESP32S3 Sense"
+  on_boot:
+    priority: -10
+    then:
+      - delay: 6s
+      - logger.log: "Boot test: writing test line to SD"
+      - sd_card_spi.write_file:
+          id: sd_card_1
+          path: data.txt
+          append: false
+          data: "boot_test_line\n"
+      - delay: 500ms
+      - logger.log: "Boot test: reading SD file data.txt"
+      - sd_card_spi.read_file:
+          id: sd_card_1
+          path: data.txt
+          max_bytes: 2048
+
+esp32:
+  board: seeed_xiao_esp32s3
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_FATFS_LFN_HEAP: y
+      CONFIG_FATFS_MAX_LFN: "255"
+
+logger:
+  level: DEBUG
+
+wifi:
+  ssid: "PROTOFY"
+  password: "PR0T0FY38"
+
+api:
+
+web_server:
+  port: 80
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [sd_card_spi]
+    refresh: 0s
+
+sd_card_spi:
+  id: sd_card_1
+  cs_pin: 21
+  sck_pin: 7
+  miso_pin: 8
+  mosi_pin: 9
+  frequency: 4000000
+  root_path: /
+
+interval:
+  - interval: 20s
+    startup_delay: 20s
+    then:
+      - sd_card_spi.write_file:
+          id: sd_card_1
+          path: data.txt
+          append: true
+          data: !lambda |-
+            static uint32_t n = 0;
+            n++;
+            char buf[64];
+            snprintf(buf, sizeof(buf), "interval_line_%lu\n", (unsigned long) n);
+            return std::string(buf);
+      - sd_card_spi.read_file:
+          id: sd_card_1
+          path: data.txt
+          max_bytes: 2048
+
+button:
+  - platform: template
+    name: "SD Write One Line"
+    on_press:
+      - logger.log: "Manual write requested"
+      - sd_card_spi.write_file:
+          id: sd_card_1
+          path: data.txt
+          append: true
+          data: "manual_line\n"
+
+  - platform: template
+    name: "SD Read File"
+    on_press:
+      - logger.log: "Manual read requested"
+      - sd_card_spi.read_file:
+          id: sd_card_1
+          path: data.txt
+          max_bytes: 2048
+
+  - platform: template
+    name: "SD Delete File"
+    on_press:
+      - logger.log: "Manual delete requested"
+      - sd_card_spi.delete_file:
+          id: sd_card_1
+          path: data.txt
