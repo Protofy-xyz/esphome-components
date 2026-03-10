@@ -2,7 +2,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation
 from esphome.const import CONF_ID
-from esphome.components.esp32 import include_builtin_idf_component, require_fatfs
+from esphome.components.esp32 import add_idf_sdkconfig_option, include_builtin_idf_component, require_fatfs
 
 CONF_ROOT_PATH = "root_path"
 CONF_PATH = "path"
@@ -53,6 +53,11 @@ async def to_code(config):
     require_fatfs()
     include_builtin_idf_component("fatfs")
     include_builtin_idf_component("wear_levelling")
+
+    # Enable Long File Name (LFN) support — allows filenames beyond 8.3 format
+    add_idf_sdkconfig_option("CONFIG_FATFS_LFN_NONE", False)
+    add_idf_sdkconfig_option("CONFIG_FATFS_LFN_HEAP", True)
+    add_idf_sdkconfig_option("CONFIG_FATFS_MAX_LFN", 255)
 
 
 WRITE_FILE_ACTION_SCHEMA = cv.Schema(

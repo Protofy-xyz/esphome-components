@@ -72,12 +72,17 @@ bool SDCardSPIComponent::try_mount_() {
   bus_cfg.max_transfer_sz = 4096;
 
   esp_err_t ret = spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
-  if (ret != ESP_OK) {
+  if (ret == ESP_OK) {
+    s_bus_initialized = true;
+  } else if (ret == ESP_ERR_INVALID_STATE) {
+    // SPI host already initialized by another component (for example ethernet).
+    // Reuse existing bus instead of failing.
+    ESP_LOGW(TAG, "SPI bus already initialized; reusing existing host");
+  } else {
     ESP_LOGE(TAG, "SPI bus init failed: %s", esp_err_to_name(ret));
     this->mounted_ = false;
     return false;
   }
-  s_bus_initialized = true;
 
   // Configure SD SPI device
   sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
@@ -99,8 +104,10 @@ bool SDCardSPIComponent::try_mount_() {
   if (ret != ESP_OK) {
     ESP_LOGE(TAG, "SD mount failed: %s (0x%x)", esp_err_to_name(ret), ret);
     s_card = nullptr;
-    spi_bus_free(SPI2_HOST);
-    s_bus_initialized = false;
+    if (s_bus_initialized) {
+      spi_bus_free(SPI2_HOST);
+      s_bus_initialized = false;
+    }
     this->mounted_ = false;
     return false;
   }

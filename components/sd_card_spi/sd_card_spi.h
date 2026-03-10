@@ -13,7 +13,7 @@ class SDCardSPIComponent : public Component {
   void setup() override;
   void loop() override;
   void dump_config() override;
-  float get_setup_priority() const override { return setup_priority::DATA; }
+  float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
   void set_root_path(const std::string &root_path);
   void set_cs_pin(int pin) { this->cs_pin_ = pin; }
