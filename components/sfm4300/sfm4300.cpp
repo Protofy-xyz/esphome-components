@@ -55,8 +55,13 @@ void SFM4300Sensor::setup() {
 
   uint16_t start_cmd = this->get_start_command_();
 
+  // Step 0: Send stop command in case sensor was left in continuous mode
+  // (e.g. after a soft reset). Ignore errors — sensor may not be measuring.
+  this->send_command_(CMD_STOP);
+  vTaskDelay(pdMS_TO_TICKS(50));
+
   // Step 1: Read scale factor and offset
-  // Send CMD_READ_SCALE (0x3661) followed by the gas start command
+  // Send CMD_READ_SCALE (0x3661) followed by the gas start command as argument
   uint8_t cmd_buf[4];
   cmd_buf[0] = CMD_READ_SCALE >> 8;    // 0x36
   cmd_buf[1] = CMD_READ_SCALE & 0xFF;  // 0x61
@@ -69,16 +74,30 @@ void SFM4300Sensor::setup() {
     return;
   }
 
-  // Wait for the sensor to process (needs up to 100ms per Sensirion docs)
-  vTaskDelay(pdMS_TO_TICKS(100));
-
   // Read 9 bytes: scale(2) + crc(1) + offset(2) + crc(1) + unit(2) + crc(1)
+  // Retry with increasing delays — sensor may need time to process
   uint8_t data[9];
-  if (!this->read_data_(data, 9)) {
-    ESP_LOGE(TAG, "Failed to read scale/offset data");
+  bool read_ok = false;
+  const uint32_t delays_ms[] = {100, 250, 500, 1000};
+  for (int attempt = 0; attempt < 4; attempt++) {
+    vTaskDelay(pdMS_TO_TICKS(delays_ms[attempt]));
+    if (this->read_data_(data, 9)) {
+      read_ok = true;
+      ESP_LOGI(TAG, "Scale/offset read OK on attempt %d (delay %lums)", attempt + 1, delays_ms[attempt]);
+      break;
+    }
+    ESP_LOGW(TAG, "Read attempt %d failed (delay %lums), retrying...", attempt + 1, delays_ms[attempt]);
+  }
+
+  if (!read_ok) {
+    ESP_LOGE(TAG, "Failed to read scale/offset data after all retries");
     this->mark_failed();
     return;
   }
+
+  // Log raw bytes for debugging
+  ESP_LOGD(TAG, "Raw scale data: %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+           data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8]);
 
   // Verify CRCs
   if (crc8_(data, 2) != data[2] || crc8_(data + 3, 2) != data[5]) {
