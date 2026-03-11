@@ -70,7 +70,7 @@ void SFM4300Sensor::setup() {
   }
 
   // Wait for the sensor to process
-  delay(12);
+  vTaskDelay(pdMS_TO_TICKS(12));
 
   // Read 9 bytes: scale(2) + crc(1) + offset(2) + crc(1) + unit(2) + crc(1)
   uint8_t data[9];
