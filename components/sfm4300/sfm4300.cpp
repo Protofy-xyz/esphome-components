@@ -61,14 +61,20 @@ void SFM4300Sensor::setup() {
   vTaskDelay(pdMS_TO_TICKS(50));
 
   // Step 1: Read scale factor and offset
-  // Send CMD_READ_SCALE (0x3661) followed by the gas start command as argument
-  uint8_t cmd_buf[4];
+  // Send CMD_READ_SCALE (0x3661) followed by the gas start command as argument + CRC
+  // Per datasheet Sec 4.2: command(2) + argument(2) + CRC(1) = 5 bytes
+  uint8_t arg_bytes[2] = {(uint8_t)(start_cmd >> 8), (uint8_t)(start_cmd & 0xFF)};
+  uint8_t cmd_buf[5];
   cmd_buf[0] = CMD_READ_SCALE >> 8;    // 0x36
   cmd_buf[1] = CMD_READ_SCALE & 0xFF;  // 0x61
-  cmd_buf[2] = start_cmd >> 8;          // e.g. 0x36
-  cmd_buf[3] = start_cmd & 0xFF;        // e.g. 0x03
+  cmd_buf[2] = arg_bytes[0];            // e.g. 0x36
+  cmd_buf[3] = arg_bytes[1];            // e.g. 0x03
+  cmd_buf[4] = crc8_(arg_bytes, 2);     // CRC of the argument
 
-  if (this->write(cmd_buf, 4) != i2c::ERROR_OK) {
+  ESP_LOGD(TAG, "Sending read_scale cmd: %02X %02X %02X %02X %02X",
+           cmd_buf[0], cmd_buf[1], cmd_buf[2], cmd_buf[3], cmd_buf[4]);
+
+  if (this->write(cmd_buf, 5) != i2c::ERROR_OK) {
     ESP_LOGE(TAG, "Failed to send read_scale command");
     this->mark_failed();
     return;
