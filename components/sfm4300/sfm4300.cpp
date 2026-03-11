@@ -69,8 +69,8 @@ void SFM4300Sensor::setup() {
     return;
   }
 
-  // Wait for the sensor to process
-  vTaskDelay(pdMS_TO_TICKS(12));
+  // Wait for the sensor to process (needs up to 100ms per Sensirion docs)
+  vTaskDelay(pdMS_TO_TICKS(100));
 
   // Read 9 bytes: scale(2) + crc(1) + offset(2) + crc(1) + unit(2) + crc(1)
   uint8_t data[9];
