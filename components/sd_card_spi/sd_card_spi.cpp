@@ -1,8 +1,11 @@
 #include "sd_card_spi.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <sys/stat.h>
+
+#include "ff.h"
 
 #include "driver/sdspi_host.h"
 #include "driver/spi_common.h"
@@ -164,20 +167,22 @@ bool SDCardSPIComponent::delete_file(const std::string &path) {
     return false;
   }
 
-  const std::string vfs_path = std::string(MOUNT_POINT) + this->resolve_path_(path);
+  // Use FatFs API directly — POSIX remove() returns ENOSYS on some ESP-IDF builds
+  std::string resolved = this->resolve_path_(path);
+  std::string ff_path;
+  if (!resolved.empty() && resolved[0] == '/') {
+    ff_path = resolved.substr(1);
+  } else {
+    ff_path = resolved;
+  }
 
-  struct stat st;
-  if (stat(vfs_path.c_str(), &st) != 0) {
-    ESP_LOGW(TAG, "File does not exist: %s", vfs_path.c_str());
+  FRESULT res = f_unlink(ff_path.c_str());
+  if (res != FR_OK) {
+    ESP_LOGE(TAG, "Failed to delete '%s' (FRESULT=%d)", ff_path.c_str(), (int) res);
     return false;
   }
 
-  if (remove(vfs_path.c_str()) != 0) {
-    ESP_LOGE(TAG, "Failed to delete '%s' (errno=%d)", vfs_path.c_str(), errno);
-    return false;
-  }
-
-  ESP_LOGD(TAG, "Deleted %s", vfs_path.c_str());
+  ESP_LOGD(TAG, "Deleted %s", ff_path.c_str());
   return true;
 }
 
@@ -231,6 +236,52 @@ std::string SDCardSPIComponent::resolve_path_(const std::string &path) const {
     return this->root_path_ + path;
   }
   return this->root_path_ + "/" + path;
+}
+
+std::vector<std::string> SDCardSPIComponent::list_directory(const std::string &path, const std::string &suffix) {
+  std::vector<std::string> result;
+  if (!this->mounted_ && !this->try_mount_()) {
+    ESP_LOGW(TAG, "Skipping list; SD not mounted");
+    return result;
+  }
+
+  // Use FatFs API directly to avoid POSIX stub linker warnings.
+  // FatFs uses drive-relative paths: "" or "." for root, not "/".
+  FF_DIR dir;
+  FILINFO info;
+  std::string resolved = this->resolve_path_(path);
+  // Strip leading slash — FatFs root is "" not "/"
+  std::string ff_path;
+  if (resolved == "/") {
+    ff_path = "";
+  } else if (!resolved.empty() && resolved[0] == '/') {
+    ff_path = resolved.substr(1);
+  } else {
+    ff_path = resolved;
+  }
+
+  FRESULT res = f_opendir(&dir, ff_path.c_str());
+  if (res != FR_OK) {
+    ESP_LOGE(TAG, "Failed to open directory '%s' (FRESULT=%d)", ff_path.c_str(), (int) res);
+    return result;
+  }
+
+  while (true) {
+    res = f_readdir(&dir, &info);
+    if (res != FR_OK || info.fname[0] == '\0') break;
+    if (info.fattrib & AM_DIR) continue;
+    std::string name(info.fname);
+    if (!suffix.empty()) {
+      if (name.size() < suffix.size()) continue;
+      if (name.compare(name.size() - suffix.size(), suffix.size(), suffix) != 0) continue;
+    }
+    result.push_back(name);
+  }
+  f_closedir(&dir);
+
+  std::sort(result.begin(), result.end());
+  ESP_LOGD(TAG, "Listed %u files in %s", (unsigned) result.size(), ff_path.c_str());
+  return result;
 }
 
 }  // namespace sd_card_spi

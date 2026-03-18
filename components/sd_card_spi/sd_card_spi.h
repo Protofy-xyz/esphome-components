@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
@@ -27,6 +28,7 @@ class SDCardSPIComponent : public Component {
   bool read_file(const std::string &path, size_t max_bytes, std::string &out);
   bool exists(const std::string &path);
   bool initialized() const { return this->mounted_; }
+  std::vector<std::string> list_directory(const std::string &path, const std::string &suffix = "");
 
  protected:
   bool mounted_{false};

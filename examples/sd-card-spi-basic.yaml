@@ -5,17 +5,18 @@ esphome:
     priority: -10
     then:
       - delay: 6s
-      - logger.log: "Boot test: writing test line to SD"
+      - logger.log: "Boot test: writing sensor JSON to SD"
       - sd_card_spi.write_file:
           id: sd_card_1
-          path: data.txt
+          path: 1709812345.json
           append: false
-          data: "boot_test_line\n"
+          data: !lambda |-
+            return "{\"1:adc_test\":{\"v\":3.33},\"2:aht_test\":{\"hum\":56.2,\"temp\":32.3},\"3:lux_test\":{\"lx\":1529},\"4:soil_test\":{\"moist\":60},\"n\":\"nave_001\",\"u\":{\"hum\":\"%\",\"lx\":\"lx\",\"moist\":\"%\",\"temp\":\"°C\",\"v\":\"V\"},\"up\":3}\n";
       - delay: 500ms
-      - logger.log: "Boot test: reading SD file data.txt"
+      - logger.log: "Boot test: reading sensor JSON from SD"
       - sd_card_spi.read_file:
           id: sd_card_1
-          path: data.txt
+          path: 1709812345.json
           max_bytes: 2048
 
 esp32:
@@ -60,29 +61,28 @@ interval:
     then:
       - sd_card_spi.write_file:
           id: sd_card_1
-          path: data.txt
-          append: true
-          data: !lambda |-
-            static uint32_t n = 0;
-            n++;
-            char buf[64];
-            snprintf(buf, sizeof(buf), "interval_line_%lu\n", (unsigned long) n);
+          path: !lambda |-
+            static uint32_t ts = 1709812345;
+            ts += 3600;
+            char buf[32];
+            snprintf(buf, sizeof(buf), "%lu.json", (unsigned long) ts);
             return std::string(buf);
-      - sd_card_spi.read_file:
-          id: sd_card_1
-          path: data.txt
-          max_bytes: 2048
+          append: false
+          data: !lambda |-
+            return "{\"1:adc_test\":{\"v\":3.33},\"2:aht_test\":{\"hum\":56.2,\"temp\":32.3},\"3:lux_test\":{\"lx\":1529},\"4:soil_test\":{\"moist\":60},\"n\":\"nave_001\",\"u\":{\"hum\":\"%\",\"lx\":\"lx\",\"moist\":\"%\",\"temp\":\"°C\",\"v\":\"V\"},\"up\":3}\n";
+      - logger.log: "Wrote sensor JSON to SD"
 
 button:
   - platform: template
-    name: "SD Write One Line"
+    name: "SD Write Sensor JSON"
     on_press:
-      - logger.log: "Manual write requested"
+      - logger.log: "Manual write: sensor JSON"
       - sd_card_spi.write_file:
           id: sd_card_1
-          path: data.txt
-          append: true
-          data: "manual_line\n"
+          path: 1709812345.json
+          append: false
+          data: !lambda |-
+            return "{\"1:adc_test\":{\"v\":3.33},\"2:aht_test\":{\"hum\":56.2,\"temp\":32.3},\"3:lux_test\":{\"lx\":1529},\"4:soil_test\":{\"moist\":60},\"n\":\"nave_001\",\"u\":{\"hum\":\"%\",\"lx\":\"lx\",\"moist\":\"%\",\"temp\":\"°C\",\"v\":\"V\"},\"up\":3}\n";
 
   - platform: template
     name: "SD Read File"
@@ -90,7 +90,7 @@ button:
       - logger.log: "Manual read requested"
       - sd_card_spi.read_file:
           id: sd_card_1
-          path: data.txt
+          path: 1709812345.json
           max_bytes: 2048
 
   - platform: template
@@ -99,4 +99,4 @@ button:
       - logger.log: "Manual delete requested"
       - sd_card_spi.delete_file:
           id: sd_card_1
-          path: data.txt
+          path: 1709812345.json

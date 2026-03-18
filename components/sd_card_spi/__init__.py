@@ -2,7 +2,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation
 from esphome.const import CONF_ID
-from esphome.components.esp32 import add_idf_sdkconfig_option, include_builtin_idf_component, require_fatfs
+from esphome.components import esp32
 
 CONF_ROOT_PATH = "root_path"
 CONF_PATH = "path"
@@ -50,14 +50,22 @@ async def to_code(config):
     cg.add(var.set_mosi_pin(config[CONF_MOSI_PIN]))
     cg.add(var.set_frequency(config[CONF_FREQUENCY]))
 
-    require_fatfs()
-    include_builtin_idf_component("fatfs")
-    include_builtin_idf_component("wear_levelling")
+    # ESPHome API compatibility:
+    # - <=2025.10: require_fatfs()/include_builtin_idf_component()
+    # - >=2025.11: require_vfs_dir(), built-in IDF components don't need explicit inclusion
+    if hasattr(esp32, "require_vfs_dir"):
+        esp32.require_vfs_dir()
+    elif hasattr(esp32, "require_fatfs"):
+        esp32.require_fatfs()
+
+    if hasattr(esp32, "include_builtin_idf_component"):
+        esp32.include_builtin_idf_component("fatfs")
+        esp32.include_builtin_idf_component("wear_levelling")
 
     # Enable Long File Name (LFN) support — allows filenames beyond 8.3 format
-    add_idf_sdkconfig_option("CONFIG_FATFS_LFN_NONE", False)
-    add_idf_sdkconfig_option("CONFIG_FATFS_LFN_HEAP", True)
-    add_idf_sdkconfig_option("CONFIG_FATFS_MAX_LFN", 255)
+    esp32.add_idf_sdkconfig_option("CONFIG_FATFS_LFN_NONE", False)
+    esp32.add_idf_sdkconfig_option("CONFIG_FATFS_LFN_HEAP", True)
+    esp32.add_idf_sdkconfig_option("CONFIG_FATFS_MAX_LFN", 255)
 
 
 WRITE_FILE_ACTION_SCHEMA = cv.Schema(
