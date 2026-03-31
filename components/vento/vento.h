@@ -6,11 +6,10 @@
 namespace esphome {
 namespace vento {
 
-class VentoComponent : public PollingComponent {
+class VentoComponent : public Component {
  public:
-  VentoComponent() : PollingComponent(60000) {} // re-publish every 60s
   void setup() override;
-  void update() override;
+  void loop() override;
   float get_setup_priority() const override;
 
   void set_manifest(const char *manifest) { this->manifest_ = manifest; }

@@ -15,22 +15,21 @@ void VentoComponent::setup() {
   if (this->manifest_.empty()) {
     ESP_LOGW(TAG, "No manifest to publish");
     this->mark_failed();
-    return;
   }
 }
 
-void VentoComponent::update() {
+void VentoComponent::loop() {
+  if (this->published_)
+    return;
+
   auto *mqtt = mqtt::global_mqtt_client;
   if (mqtt == nullptr || !mqtt->is_connected())
     return;
 
   std::string topic = mqtt->get_topic_prefix() + "/manifest";
   mqtt->publish(topic, this->manifest_, 0, true);
-
-  if (!this->published_) {
-    this->published_ = true;
-    ESP_LOGI(TAG, "Published manifest to %s (%d bytes)", topic.c_str(), this->manifest_.size());
-  }
+  this->published_ = true;
+  ESP_LOGI(TAG, "Published manifest to %s (%d bytes)", topic.c_str(), this->manifest_.size());
 }
 
 }  // namespace vento
