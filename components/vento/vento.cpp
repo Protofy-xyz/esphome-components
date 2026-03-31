@@ -29,10 +29,10 @@ void VentoComponent::loop() {
   // Wait 5 seconds after MQTT reports connected to ensure
   // the connection is fully established and the broker is ready
   if (this->delay_start_ == 0) {
-    this->delay_start_ = millis();
+    this->delay_start_ = esphome::millis();
     return;
   }
-  if (millis() - this->delay_start_ < 5000)
+  if (esphome::millis() - this->delay_start_ < 5000)
     return;
 
   std::string topic = mqtt->get_topic_prefix() + "/manifest";
