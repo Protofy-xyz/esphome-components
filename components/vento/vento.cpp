@@ -17,19 +17,20 @@ void VentoComponent::setup() {
     this->mark_failed();
     return;
   }
+}
 
+void VentoComponent::update() {
   auto *mqtt = mqtt::global_mqtt_client;
-  if (mqtt == nullptr) {
-    ESP_LOGE(TAG, "MQTT client not available");
-    this->mark_failed();
+  if (mqtt == nullptr || !mqtt->is_connected())
     return;
-  }
 
-  mqtt->set_on_connect([this, mqtt](bool session_present) {
-    std::string topic = mqtt->get_topic_prefix() + "/manifest";
-    mqtt->publish(topic, this->manifest_, 0, true);
+  std::string topic = mqtt->get_topic_prefix() + "/manifest";
+  mqtt->publish(topic, this->manifest_, 0, true);
+
+  if (!this->published_) {
+    this->published_ = true;
     ESP_LOGI(TAG, "Published manifest to %s (%d bytes)", topic.c_str(), this->manifest_.size());
-  });
+  }
 }
 
 }  // namespace vento
