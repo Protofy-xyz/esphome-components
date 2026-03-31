@@ -25,7 +25,7 @@ void VentoComponent::setup() {
     return;
   }
 
-  mqtt->register_on_connect_callback([this, mqtt]() {
+  mqtt->set_on_connect([this, mqtt](bool session_present) {
     std::string topic = mqtt->get_topic_prefix() + "/manifest";
     mqtt->publish(topic, this->manifest_, 0, true);
     ESP_LOGI(TAG, "Published manifest to %s (%d bytes)", topic.c_str(), this->manifest_.size());
