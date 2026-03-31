@@ -1,5 +1,6 @@
 #include "vento.h"
 #include "esphome/components/mqtt/mqtt_client.h"
+#include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
