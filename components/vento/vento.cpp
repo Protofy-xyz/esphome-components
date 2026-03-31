@@ -7,6 +7,8 @@ namespace esphome {
 namespace vento {
 
 static const char *const TAG = "vento";
+static const int PUBLISH_COUNT = 3;
+static const uint32_t PUBLISH_INTERVAL_MS = 2000;
 
 float VentoComponent::get_setup_priority() const {
   return setup_priority::AFTER_CONNECTION;
@@ -20,26 +22,23 @@ void VentoComponent::setup() {
 }
 
 void VentoComponent::loop() {
-  if (this->published_)
+  if (this->publish_count_ >= PUBLISH_COUNT)
     return;
 
   auto *mqtt = mqtt::global_mqtt_client;
   if (mqtt == nullptr || !mqtt->is_connected())
     return;
 
-  // Wait 5 seconds after MQTT reports connected to ensure
-  // the connection is fully established and the broker is ready
-  if (this->delay_start_ == 0) {
-    this->delay_start_ = esphome::millis();
-    return;
-  }
-  if (esphome::millis() - this->delay_start_ < 5000)
+  uint32_t now = esphome::millis();
+  if (this->last_publish_ != 0 && now - this->last_publish_ < PUBLISH_INTERVAL_MS)
     return;
 
   std::string topic = mqtt->get_topic_prefix() + "/manifest";
   mqtt->publish(topic, this->manifest_, 0, true);
-  this->published_ = true;
-  ESP_LOGI(TAG, "Published manifest to %s (%d bytes)", topic.c_str(), this->manifest_.size());
+  this->last_publish_ = now;
+  this->publish_count_++;
+  ESP_LOGI(TAG, "Published manifest to %s (%d bytes, attempt %d/%d)",
+           topic.c_str(), this->manifest_.size(), this->publish_count_, PUBLISH_COUNT);
 }
 
 }  // namespace vento
