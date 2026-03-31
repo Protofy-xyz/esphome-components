@@ -26,6 +26,15 @@ void VentoComponent::loop() {
   if (mqtt == nullptr || !mqtt->is_connected())
     return;
 
+  // Wait 5 seconds after MQTT reports connected to ensure
+  // the connection is fully established and the broker is ready
+  if (this->delay_start_ == 0) {
+    this->delay_start_ = millis();
+    return;
+  }
+  if (millis() - this->delay_start_ < 5000)
+    return;
+
   std::string topic = mqtt->get_topic_prefix() + "/manifest";
   mqtt->publish(topic, this->manifest_, 0, true);
   this->published_ = true;

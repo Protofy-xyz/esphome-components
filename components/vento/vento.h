@@ -17,6 +17,7 @@ class VentoComponent : public Component {
  protected:
   std::string manifest_;
   bool published_{false};
+  uint32_t delay_start_{0};
 };
 
 }  // namespace vento
