@@ -85,12 +85,145 @@ DOMAIN_ACTIONS = {
     ],
 }
 
+# Keys that are not sub-component entries (platform config, automations, etc.)
+_NON_COMPONENT_KEYS = {
+    'platform', 'id', 'name', 'icon', 'internal', 'disabled_by_default',
+    'on_value', 'on_state', 'on_press', 'on_release', 'on_click',
+    'on_turn_on', 'on_turn_off', 'on_multi_click', 'on_double_click',
+    'on_raw_value', 'on_value_range', 'filters', 'update_interval',
+    'entity_category', 'device_class', 'state_class', 'unit_of_measurement',
+    'accuracy_decimals', 'expire_after', 'force_update', 'web_server',
+}
+
 vento_ns = cg.esphome_ns.namespace('vento')
 VentoComponent = vento_ns.class_('VentoComponent', cg.Component)
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(VentoComponent),
 }).extend(cv.COMPONENT_SCHEMA)
+
+
+def _extract_entries(domain, entries):
+    """Extract individual named components from a domain's config entries.
+
+    Handles two patterns:
+    1. Standard: entry has 'name' at top level → one component per entry
+    2. Platform sub-entries: entry has sub-keys that are dicts with 'name'/'id'
+       (e.g., text_sensor with platform: mks42d has step_state:, home_state:, etc.)
+    """
+    results = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+
+        # Standard case: entry has a name directly
+        top_name = entry.get('name')
+        if top_name:
+            results.append((str(top_name), domain))
+            continue
+
+        # Platform sub-entry case: scan keys for nested dicts with name/id
+        found_any = False
+        for key, val in entry.items():
+            if key in _NON_COMPONENT_KEYS:
+                continue
+            if isinstance(val, dict) and (val.get('name') or val.get('id')):
+                comp_name = str(val.get('name') or val.get('id'))
+                results.append((comp_name, domain))
+                found_any = True
+
+        # Fallback: use entry id or domain name
+        if not found_any:
+            fallback = entry.get('id') or entry.get('platform', domain)
+            results.append((str(fallback), domain))
+
+    return results
+
+
+def _extract_mqtt_actions(full_config):
+    """Extract MQTT on_message/on_json_message topics as action subsystems.
+
+    Parses mqtt.on_message and mqtt.on_json_message entries. Each topic that
+    matches the device's topic_prefix is converted into an action endpoint.
+    Topics are grouped by the path after the topic_prefix.
+    """
+    mqtt_config = full_config.get('mqtt')
+    if not mqtt_config or not isinstance(mqtt_config, dict):
+        return []
+
+    topic_prefix = str(mqtt_config.get('topic_prefix', ''))
+    if not topic_prefix:
+        return []
+
+    actions = []
+    seen_topics = set()
+
+    for key in ('on_message', 'on_json_message'):
+        msg_entries = mqtt_config.get(key, [])
+        if not isinstance(msg_entries, list):
+            msg_entries = [msg_entries]
+
+        is_json = key == 'on_json_message'
+
+        for msg in msg_entries:
+            if not isinstance(msg, dict):
+                continue
+            topic = str(msg.get('topic', ''))
+            if not topic or not topic.startswith(topic_prefix + '/'):
+                continue
+            if topic in seen_topics:
+                continue
+            seen_topics.add(topic)
+
+            # Extract the relative path after topic_prefix
+            # e.g., "vento/devices/controler1/motor/motor1/send_home" → "motor/motor1/send_home"
+            rel_path = topic[len(topic_prefix) + 1:]
+            parts = rel_path.split('/')
+
+            # Derive action name from last path segment
+            action_name = parts[-1] if parts else rel_path
+
+            # Derive a subsystem group from the path (e.g., "motor/motor1")
+            # Use first two segments as group, or just the first
+            if len(parts) >= 2:
+                group_name = parts[1]  # e.g., "motor1"
+            else:
+                group_name = parts[0] if parts else 'mqtt'
+
+            payload_type = 'json' if is_json else 'str'
+
+            actions.append({
+                'group': group_name,
+                'name': action_name,
+                'label': action_name.replace('_', ' ').title(),
+                'endpoint': '/' + rel_path,
+                'payload_type': payload_type,
+            })
+
+    # Group actions by their group name into subsystems
+    groups = {}
+    for a in actions:
+        g = a['group']
+        if g not in groups:
+            groups[g] = []
+        groups[g].append({
+            'name': a['name'],
+            'label': a['label'],
+            'endpoint': a['endpoint'],
+            'connectionType': 'mqtt',
+            'payload': {'type': a['payload_type'], 'value': ''},
+        })
+
+    subsystems = []
+    for group_name, group_actions in groups.items():
+        subsystems.append({
+            'name': group_name,
+            'type': 'mqtt_device',
+            'monitors': [],
+            'actions': group_actions,
+        })
+
+    return subsystems
 
 
 def build_manifest():
@@ -107,25 +240,22 @@ def build_manifest():
         if not isinstance(entries, list):
             entries = [entries]
 
-        for entry in entries:
-            name = entry.get('name') or entry.get('id', domain)
-            comp_name = str(name) if not isinstance(name, str) else name
-
+        for comp_name, comp_domain in _extract_entries(domain, entries):
             monitors = []
-            for m in DOMAIN_MONITORS.get(domain, []):
+            for m in DOMAIN_MONITORS.get(comp_domain, []):
                 monitors.append({
                     'name': m['name'],
                     'label': m['label'],
-                    'endpoint': '/%s/%s%s' % (domain, comp_name, m['suffix']),
+                    'endpoint': '/%s/%s%s' % (comp_domain, comp_name, m['suffix']),
                     'connectionType': 'mqtt',
                 })
 
             actions = []
-            for a in DOMAIN_ACTIONS.get(domain, []):
+            for a in DOMAIN_ACTIONS.get(comp_domain, []):
                 action_entry = {
                     'name': a['name'],
                     'label': a['label'],
-                    'endpoint': '/%s/%s%s' % (domain, comp_name, a['suffix']),
+                    'endpoint': '/%s/%s%s' % (comp_domain, comp_name, a['suffix']),
                     'connectionType': 'mqtt',
                 }
                 if a.get('payload'):
@@ -138,6 +268,10 @@ def build_manifest():
                 'monitors': monitors,
                 'actions': actions,
             })
+
+    # B: Extract MQTT on_message/on_json_message as action subsystems
+    mqtt_subsystems = _extract_mqtt_actions(full_config)
+    subsystems.extend(mqtt_subsystems)
 
     return json.dumps({'version': 1, 'subsystems': subsystems}, separators=(',', ':'))
 
