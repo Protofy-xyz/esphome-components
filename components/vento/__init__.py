@@ -273,6 +273,19 @@ def build_manifest():
     mqtt_subsystems = _extract_mqtt_actions(full_config)
     subsystems.extend(mqtt_subsystems)
 
+    # Device status: ESPHome publishes online/offline on {topic_prefix}/status
+    subsystems.insert(0, {
+        'name': 'device',
+        'type': 'status',
+        'monitors': [{
+            'name': 'status',
+            'label': 'Connection',
+            'endpoint': '/status',
+            'connectionType': 'mqtt',
+        }],
+        'actions': [],
+    })
+
     return json.dumps({'version': 1, 'subsystems': subsystems}, separators=(',', ':'))
 
 
