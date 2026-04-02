@@ -1,0 +1,72 @@
+# Setup Portal — Captive portal with custom configuration fields
+#
+# Creates a captive portal on the ESP32 AP that auto-opens on mobile devices.
+# Users can configure WiFi credentials and any custom fields you define.
+#
+# How it works:
+# 1. ESP32 runs in AP+STA mode (AP is always active)
+# 2. When a phone connects to the AP, captive portal detection triggers
+# 3. A configuration page opens automatically
+# 4. User enters PIN (if configured), sets WiFi and custom fields
+# 5. Settings are saved to NVS (persistent across reboots)
+#
+# Access custom field values from lambdas:
+#   id(portal).get_int("reading_interval", 90)
+#   id(portal).get_string("device_name", "default")
+#   id(portal).get_float("threshold", 1.5)
+
+esphome:
+  name: my-device
+  friendly_name: my-device
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+logger:
+wifi:
+  ap:
+    ssid: "Oxygen-Sensor-0005"
+  # No ssid/password here — managed by setup_portal via NVS.
+  # On first boot: AP-only mode. After user configures WiFi: AP+STA mode.
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [setup_portal]
+    refresh: 0s
+
+setup_portal:
+  id: portal
+  title: "Oxygen Sensor Setup"
+  pin: "1234"
+  logo: "logo.png"                           # Optional: path to logo file (embedded as base64)
+  accent_color: "#4a90d9"                      # Optional: hex color for buttons (default blue)
+  fields:
+    - id: reading_interval
+      label: "Reading interval (seconds)"
+      type: number
+      default: "90"
+      min: 10
+      max: 3600
+    - id: device_name
+      label: "Device name"
+      type: text
+      default: "sensor-01"
+
+# Example: use the configured interval in a lambda
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          static int counter = 0;
+          counter++;
+          int target = id(portal).get_int("reading_interval", 90);
+          if (counter < target) return;
+          counter = 0;
+
+          // Your periodic logic here
+          ESP_LOGI("main", "Reading triggered (interval=%ds, name=%s)",
+                   target,
+                   id(portal).get_string("device_name", "unknown").c_str());
