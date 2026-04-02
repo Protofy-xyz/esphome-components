@@ -138,11 +138,17 @@ void SetupPortalComponent::loop() {
     App.safe_reboot();
   }
 
-  // Keep AP alive
-  wifi_mode_t mode;
-  esp_wifi_get_mode(&mode);
-  if (mode == WIFI_MODE_STA) {
+  // Keep AP alive (unless temporarily disabled for disconnect)
+  if (this->ap_disabled_until_ && millis() >= this->ap_disabled_until_) {
+    this->ap_disabled_until_ = 0;
     esp_wifi_set_mode(WIFI_MODE_APSTA);
+    ESP_LOGI(TAG, "AP re-enabled after disconnect");
+  } else if (!this->ap_disabled_until_) {
+    wifi_mode_t mode;
+    esp_wifi_get_mode(&mode);
+    if (mode == WIFI_MODE_STA) {
+      esp_wifi_set_mode(WIFI_MODE_APSTA);
+    }
   }
 
   // Scan in main loop
@@ -181,6 +187,14 @@ float SetupPortalComponent::get_float(const std::string &id, float def) {
 
 bool SetupPortalComponent::check_pin(const std::string &pin) {
   return this->pin_.empty() || pin == this->pin_;
+}
+
+void SetupPortalComponent::disconnect_ap(uint32_t duration_ms) {
+#ifdef USE_ESP_IDF
+  this->ap_disabled_until_ = millis() + duration_ms;
+  esp_wifi_set_mode(WIFI_MODE_STA);
+  ESP_LOGI(TAG, "AP temporarily disabled for %dms", (int) duration_ms);
+#endif
 }
 
 // ========== NVS ==========
@@ -310,14 +324,17 @@ static esp_err_t h_save(httpd_req_t *r) {
   int rx = 0;
   while (rx < tl) { int n = httpd_req_recv(r, &body[rx], tl - rx); if (n <= 0) break; rx += n; }
   body.resize(rx);
-  bool rebooting = c->handle_save(body);
+  c->handle_save(body);
   httpd_resp_set_type(r, "text/html; charset=UTF-8");
-  if (rebooting) {
-    httpd_resp_send(r, HTML_SAVE_REBOOT, HTTPD_RESP_USE_STRLEN);
-  } else {
-    snprintf(buf_, sizeof(buf_), HTML_SAVE_OK, c->get_accent_color().c_str());
-    httpd_resp_send(r, buf_, HTTPD_RESP_USE_STRLEN);
-  }
+  httpd_resp_send(r, HTML_SAVE_REBOOT, HTTPD_RESP_USE_STRLEN);
+  return ESP_OK;
+}
+
+static esp_err_t h_disconnect(httpd_req_t *r) {
+  auto *c = static_cast<SetupPortalComponent *>(r->user_ctx);
+  httpd_resp_set_type(r, "application/json");
+  httpd_resp_send(r, "{\"ok\":true}", HTTPD_RESP_USE_STRLEN);
+  c->disconnect_ap();
   return ESP_OK;
 }
 
@@ -334,7 +351,7 @@ void SetupPortalComponent::start_http_server_() {
 #ifdef USE_ESP_IDF
   httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
   cfg.server_port = 80;
-  cfg.max_uri_handlers = 8;
+  cfg.max_uri_handlers = 10;
   cfg.stack_size = 8192;
   cfg.uri_match_fn = httpd_uri_match_wildcard;
   if (httpd_start(&this->http_server_, &cfg) != ESP_OK) return;
@@ -347,6 +364,8 @@ void SetupPortalComponent::start_http_server_() {
   httpd_register_uri_handler(this->http_server_, &u3);
   httpd_uri_t u4 = {.uri="/save", .method=HTTP_POST, .handler=h_save, .user_ctx=this};
   httpd_register_uri_handler(this->http_server_, &u4);
+  httpd_uri_t u5d = {.uri="/disconnect", .method=HTTP_GET, .handler=h_disconnect, .user_ctx=this};
+  httpd_register_uri_handler(this->http_server_, &u5d);
   httpd_uri_t u5 = {.uri="/generate_204", .method=HTTP_GET, .handler=h_captive, .user_ctx=this};
   httpd_register_uri_handler(this->http_server_, &u5);
   httpd_uri_t u6 = {.uri="/hotspot-detect.html", .method=HTTP_GET, .handler=h_captive, .user_ctx=this};
@@ -364,6 +383,8 @@ void SetupPortalComponent::start_http_server_() {
 
 #ifdef USE_ESP_IDF
 void SetupPortalComponent::serve_page(httpd_req_t *req) {
+  // Refresh values from NVS before serving (picks up changes from MQTT/external writes)
+  this->load_all_values_();
   std::string title = html_esc(this->title_);
   std::string ssid = html_esc(this->get_current_ssid_());
   bool has_pin = !this->pin_.empty();
@@ -440,11 +461,29 @@ void SetupPortalComponent::serve_page(httpd_req_t *req) {
     chunk(req, "<div class=\"b\"><h2>Settings</h2>");
     for (const auto &f : this->fields_) {
       std::string val = html_esc(this->get_string(f.id, f.default_value));
-      chunkf(req, "<label>%s</label><input type=\"%s\" name=\"%s\" value=\"%s\"",
-             f.label.c_str(), f.type.c_str(), f.id.c_str(), val.c_str());
-      if (f.has_min) chunkf(req, " min=\"%d\"", (int) f.min_value);
-      if (f.has_max) chunkf(req, " max=\"%d\"", (int) f.max_value);
-      chunk(req, ">");
+      chunkf(req, "<label>%s</label>", f.label.c_str());
+      if (f.type == "interval") {
+        // Interval field: number + unit selector, value always in seconds
+        int secs = atoi(val.c_str());
+        int displayVal = secs;
+        const char *selS = " selected", *selM = "", *selH = "";
+        if (secs > 0 && secs % 3600 == 0) { displayVal = secs / 3600; selS = ""; selH = " selected"; }
+        else if (secs > 0 && secs % 60 == 0) { displayVal = secs / 60; selS = ""; selM = " selected"; }
+        int minSecs = f.has_min ? (int) f.min_value : 1;
+        chunkf(req, "<div class=\"row\"><input type=\"number\" id=\"iv_%s\" value=\"%d\" min=\"1\" style=\"flex:1\">"
+               "<select id=\"iu_%s\" style=\"width:auto;flex:0 0 auto\">"
+               "<option value=\"1\"%s>sec</option><option value=\"60\"%s>min</option><option value=\"3600\"%s>hr</option>"
+               "</select></div>"
+               "<input type=\"hidden\" name=\"%s\" id=\"ivh_%s\" data-min=\"%d\">",
+               f.id.c_str(), displayVal,
+               f.id.c_str(), selS, selM, selH, f.id.c_str(), f.id.c_str(), minSecs);
+      } else {
+        chunkf(req, "<input type=\"%s\" name=\"%s\" value=\"%s\"",
+               f.type.c_str(), f.id.c_str(), val.c_str());
+        if (f.has_min) chunkf(req, " min=\"%d\"", (int) f.min_value);
+        if (f.has_max) chunkf(req, " max=\"%d\"", (int) f.max_value);
+        chunk(req, ">");
+      }
     }
     chunk(req, "</div>");
   }
@@ -508,19 +547,17 @@ void SetupPortalComponent::do_scan_() {
 
 // ========== Save ==========
 
-bool SetupPortalComponent::handle_save(const std::string &body) {
-  if (!this->check_pin(get_param(body, "pin"))) { ESP_LOGW(TAG, "Bad PIN"); return false; }
+void SetupPortalComponent::handle_save(const std::string &body) {
+  if (!this->check_pin(get_param(body, "pin"))) { ESP_LOGW(TAG, "Bad PIN"); return; }
 
   for (const auto &f : this->fields_) {
     std::string v = get_param(body, f.id);
     this->save_to_nvs_(f.id, v);
-    this->values_[f.id] = v;
   }
 
   std::string new_pin = get_param(body, "new_pin");
   if (!new_pin.empty()) {
     this->save_to_nvs_("_pin", new_pin);
-    this->pin_ = new_pin;
     ESP_LOGI(TAG, "PIN changed");
   }
 
@@ -531,15 +568,12 @@ bool SetupPortalComponent::handle_save(const std::string &body) {
   if (!new_ssid.empty() && (new_ssid != saved || !new_pass.empty())) {
     this->save_to_nvs_("_wifi_ssid", new_ssid);
     this->save_to_nvs_("_wifi_pass", new_pass);
-    this->needs_reboot_ = true;
-    this->reboot_at_ = millis() + REBOOT_DELAY_MS;
-    ESP_LOGI(TAG, "WiFi changed, rebooting...");
-    return true;
   }
 
-  this->reload_values_ = true;
-  ESP_LOGI(TAG, "Fields saved");
-  return false;
+  // Always reboot to apply all changes cleanly
+  this->needs_reboot_ = true;
+  this->reboot_at_ = millis() + REBOOT_DELAY_MS;
+  ESP_LOGI(TAG, "Settings saved, rebooting...");
 }
 
 }  // namespace setup_portal

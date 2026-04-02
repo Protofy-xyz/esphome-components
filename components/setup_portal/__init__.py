@@ -52,7 +52,7 @@ FIELD_SCHEMA = cv.Schema(
     {
         cv.Required("id"): validate_field_id,
         cv.Required("label"): cv.string,
-        cv.Optional("type", default="text"): cv.one_of("text", "number", "password", lower=True),
+        cv.Optional("type", default="text"): cv.one_of("text", "number", "password", "interval", lower=True),
         cv.Optional("default", default=""): cv.string,
         cv.Optional("min"): cv.float_,
         cv.Optional("max"): cv.float_,

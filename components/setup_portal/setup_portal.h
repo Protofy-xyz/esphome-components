@@ -36,7 +36,6 @@ class SetupPortalComponent : public Component {
   void set_pin(const std::string &pin) { this->pin_ = pin; }
   void set_logo_url(const std::string &url) { this->logo_url_ = url; }
   void set_accent_color(const std::string &color) { this->accent_color_ = color; }
-  const std::string &get_accent_color() const { return this->accent_color_; }
   void add_field(const std::string &id, const std::string &label,
                  const std::string &type, const std::string &default_value,
                  float min_val, float max_val, bool has_min, bool has_max);
@@ -46,7 +45,8 @@ class SetupPortalComponent : public Component {
   float get_float(const std::string &id, float default_value = 0.0f);
 
   bool check_pin(const std::string &pin);
-  bool handle_save(const std::string &body);  // returns true if reboot scheduled
+  void handle_save(const std::string &body);
+  void disconnect_ap(uint32_t duration_ms = 5000);
 
 #ifdef USE_ESP_IDF
   // Chunked HTML serving — called from HTTP handlers
@@ -78,6 +78,7 @@ class SetupPortalComponent : public Component {
   volatile bool reload_values_{false};
   volatile bool scan_requested_{false};
   std::string scan_json_{"[]"};
+  uint32_t ap_disabled_until_{0};
 
 #ifdef USE_ESP_IDF
   httpd_handle_t http_server_{nullptr};

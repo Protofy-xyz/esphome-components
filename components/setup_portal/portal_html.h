@@ -75,6 +75,12 @@ static const char HTML_SCRIPT[] =
     "o.value=x.s;o.textContent=x.s+' ('+x.r+'dBm)';s.appendChild(o);});"
     "if(!s.children.length)s.innerHTML='<option>No networks found</option>';"
     "}).catch(function(){s.innerHTML='<option>Scan error</option>';});}"
+    "document.querySelector('form').addEventListener('submit',function(e){"
+    "var ok=true;document.querySelectorAll('input[id^=\"ivh_\"]').forEach(function(h){"
+    "var fid=h.name;var v=document.getElementById('iv_'+fid);var u=document.getElementById('iu_'+fid);"
+    "if(v&&u){var s=parseInt(v.value)*parseInt(u.value);var mn=parseInt(h.dataset.min)||1;"
+    "if(s<mn){alert('Minimum is '+mn+' seconds');ok=false;return;}h.value=String(s);}"
+    "});if(!ok)e.preventDefault();});"
     "</script></body></html>";
 
 // Reboot page — auto-redirects after AP comes back
@@ -86,22 +92,6 @@ static const char HTML_SAVE_REBOOT[] =
     "<div class=\"ic\">&#10003;</div><h2>Configuration saved</h2>"
     "<p>Restarting device...</p></body></html>";
 
-// Saved page — back and close buttons: %s = accent color
-static const char HTML_SAVE_OK[] =
-    "<!DOCTYPE html><html><head>"
-    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-    "<style>body{font-family:-apple-system,system-ui,sans-serif;text-align:center;padding:60px 20px;background:#f0f2f5;color:#1a1a1a}"
-    "h2{margin-bottom:12px}.ic{color:#34c759;font-size:48px}"
-    ".btns{display:flex;gap:12px;justify-content:center;margin-top:24px;max-width:300px;margin-left:auto;margin-right:auto}"
-    ".bt{flex:1;padding:12px;border-radius:10px;font-size:.95em;font-weight:600;text-decoration:none;text-align:center;cursor:pointer}"
-    ".bt-p{background:%s;color:#fff;border:none}"
-    ".bt-s{background:none;color:#888;border:1px solid #ddd}"
-    "</style></head><body>"
-    "<div class=\"ic\">&#10003;</div><h2>Settings saved</h2>"
-    "<div class=\"btns\"><a class=\"bt bt-p\" href=\"/\">&#8592; Back</a>"
-    "<button class=\"bt bt-s\" onclick=\"window.close()\">Close</button></div>"
-    "<p style=\"color:#aaa;font-size:.75em;margin-top:16px\">Close will disconnect from the device</p>"
-    "</body></html>";
 
 }  // namespace setup_portal
 }  // namespace esphome
