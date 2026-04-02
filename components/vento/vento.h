@@ -12,12 +12,11 @@ class VentoComponent : public Component {
   void loop() override;
   float get_setup_priority() const override;
 
-  void set_manifest(const char *manifest) { this->manifest_ = manifest; }
+  void set_yaml_hash(const char *hash) { this->yaml_hash_ = hash; }
 
  protected:
-  std::string manifest_;
-  int publish_count_{0};
-  uint32_t last_publish_{0};
+  std::string yaml_hash_;
+  bool published_{false};
 };
 
 }  // namespace vento
