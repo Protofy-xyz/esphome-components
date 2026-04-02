@@ -103,11 +103,25 @@ CONFIG_SCHEMA = cv.Schema({
 }).extend(cv.COMPONENT_SCHEMA)
 
 
+def _to_mqtt_id(name_or_id):
+    """Convert a component name/id to the MQTT object_id format.
+
+    ESPHome uses the 'id' (with underscores) for MQTT topics, not the 'name'
+    (which can have spaces). If given a name with spaces, convert to underscores.
+    """
+    return str(name_or_id).replace(' ', '_').lower()
+
+
 def _extract_entries(domain, entries):
     """Extract individual named components from a domain's config entries.
 
+    Returns (mqtt_id, display_name, domain) tuples where:
+    - mqtt_id: the ID used in MQTT topics (underscores, lowercase)
+    - display_name: human-readable name for labels
+    - domain: the ESPHome domain (text_sensor, sensor, switch, etc.)
+
     Handles two patterns:
-    1. Standard: entry has 'name' at top level → one component per entry
+    1. Standard: entry has 'name'/'id' at top level → one component per entry
     2. Platform sub-entries: entry has sub-keys that are dicts with 'name'/'id'
        (e.g., text_sensor with platform: mks42d has step_state:, home_state:, etc.)
     """
@@ -116,10 +130,13 @@ def _extract_entries(domain, entries):
         if not isinstance(entry, dict):
             continue
 
-        # Standard case: entry has a name directly
+        # Standard case: entry has an id or name directly
+        top_id = entry.get('id')
         top_name = entry.get('name')
-        if top_name:
-            results.append((str(top_name), domain))
+        if top_name or top_id:
+            mqtt_id = _to_mqtt_id(top_id or top_name)
+            display = str(top_name or top_id)
+            results.append((mqtt_id, display, domain))
             continue
 
         # Platform sub-entry case: scan keys for nested dicts with name/id
@@ -128,14 +145,18 @@ def _extract_entries(domain, entries):
             if key in _NON_COMPONENT_KEYS:
                 continue
             if isinstance(val, dict) and (val.get('name') or val.get('id')):
-                comp_name = str(val.get('name') or val.get('id'))
-                results.append((comp_name, domain))
+                sub_id = val.get('id')
+                sub_name = val.get('name')
+                mqtt_id = _to_mqtt_id(sub_id or sub_name)
+                display = str(sub_name or sub_id)
+                results.append((mqtt_id, display, domain))
                 found_any = True
 
         # Fallback: use entry id or domain name
         if not found_any:
             fallback = entry.get('id') or entry.get('platform', domain)
-            results.append((str(fallback), domain))
+            mqtt_id = _to_mqtt_id(fallback)
+            results.append((mqtt_id, str(fallback), domain))
 
     return results
 
@@ -240,13 +261,13 @@ def build_manifest():
         if not isinstance(entries, list):
             entries = [entries]
 
-        for comp_name, comp_domain in _extract_entries(domain, entries):
+        for mqtt_id, display_name, comp_domain in _extract_entries(domain, entries):
             monitors = []
             for m in DOMAIN_MONITORS.get(comp_domain, []):
                 monitors.append({
                     'name': m['name'],
                     'label': m['label'],
-                    'endpoint': '/%s/%s%s' % (comp_domain, comp_name, m['suffix']),
+                    'endpoint': '/%s/%s%s' % (comp_domain, mqtt_id, m['suffix']),
                     'connectionType': 'mqtt',
                 })
 
@@ -255,7 +276,7 @@ def build_manifest():
                 action_entry = {
                     'name': a['name'],
                     'label': a['label'],
-                    'endpoint': '/%s/%s%s' % (comp_domain, comp_name, a['suffix']),
+                    'endpoint': '/%s/%s%s' % (comp_domain, mqtt_id, a['suffix']),
                     'connectionType': 'mqtt',
                 }
                 if a.get('payload'):
@@ -263,7 +284,7 @@ def build_manifest():
                 actions.append(action_entry)
 
             subsystems.append({
-                'name': comp_name,
+                'name': display_name,
                 'type': type_name,
                 'monitors': monitors,
                 'actions': actions,
